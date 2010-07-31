@@ -1,0 +1,143 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<html>
+<head>
+<!--
+
+  @(#)package.html	1.60 98/01/27
+
+   Copyright 2010 Gerald Ehmayer
+   
+   This file is part of project GFork.
+
+    GFork is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    GFork is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with GFork.  If not, see <http://www.gnu.org/licenses/>.
+
+-->
+</head>
+<body bgcolor="white">
+
+Convenience Java API to run code referred to as <i>task</i> in a sub process, which is 
+referred to as <i>fork</i>. 
+Tasks can be implemented in any public method of a <code>Serializable</code> class. Per
+default method <code>public void run()</code> of interface <code>Runnable</code> is used
+to execute a task.
+<p>
+Example:
+<pre>
+	Fork&lt;MyTask, Void&gt; f = new Fork&lt;MyTask, Void&gt;(new MyTask());
+	
+	f.execute();
+	
+	f.waitFor();
+	
+	...
+	
+	class MyTask implements Serializable, Runnable {
+	
+		public void run() {
+			...
+		}
+	}
+</pre>
+The fork process ends when the <code>MyTask</code> method <code>public void run()</code> finishes.
+</p>
+
+<h2>Introduction</h2>
+
+Term <i>fork</i> is borrowed from fork processes on Unix systems. In Java are Unix like forks 
+not possible at moment. The intention of this package is 
+to come as close as possible to real forks. The created Java subprocess that 
+executes a Java <code>Fork</code> inherits the environment of the parent VM process per default,
+including class path and system properties. 
+Furthermore the API gives as much as possible freedom in implementing the task that
+should be executed in the subprocess. 
+<p>
+Terms of conditions for task execution:
+<ul>
+<li>Task object implements interface <code>Serializable</code>.</li>
+<li>Task object implements a public startup method. If this method has a return value and/or arguments 
+they need also to implement interface <code>Serializable</code>.</li>
+<li>Java Reflection is enabled from a security perspective.</li>
+</ul>
+</p>
+
+<p>Object Serialization is needed to pass a task object to the internal <code>ForkRunner</code>
+that implements the main method to launch a fork. <code>ForkRunner</code> invokes 
+the chosen task method via Java Reflection. Vice versa the task object, 
+its state and an optional return value of the task method are propagated back 
+to the parent process using Object Serialization when the task method returns.
+</p>
+
+<p>Reflection is used to give flexibility in choosing the task method 
+to be run in the fork subprocess. As a user of the API you have to identify
+the task method as object of type <code>java.lang.reflect.Method</code>, see also Reflection packages.  
+Alternatively <code>public void run()</code> of a <code>Runnable</code> task object
+is used per default.
+</p>
+
+<h2>Example: Task Method with Return Value</h2>
+
+The following sample shows a fork running task method <code>encodeText</code> with one <code>String</code> argument
+and a <code>String</code> return value:
+
+<pre>
+	Fork&lt;MyTask, String&gt; f = 
+		new Fork&lt;MyTask, String&gt;(
+			new MyTask(), 
+			MyTask.class.getMethod("encodeText", String.class), 
+			"some text to be converted to some encoding..."
+			);
+	
+	f.execute();
+	
+	f.waitFor();
+	
+	String result = f.getReturnValue();
+	
+	...
+	
+	class MyTaks implements Serializable {
+		
+		public String encodeText(String text) {
+			String encodedText;
+			...
+			return encodedText;
+		}
+	}
+</pre>
+For more examples and usage scenarios inspect the JUnit tests, see gfork-tests.jar 
+and the sample application, see <code>org.gfork.swing</code> in gfork.jar.
+
+<!--
+
+<h2>Package Specification</h2>
+
+##### FILL IN ANY SPECS NEEDED BY JAVA COMPATIBILITY KIT #####
+<ul>
+  <li><a href="">##### REFER TO ANY FRAMEMAKER SPECIFICATION HERE #####</a>
+</ul>
+
+<h2>Related Documentation</h2>
+
+For overviews, tutorials, examples, guides, and tool documentation, please see:
+<ul>
+  <li><a href="">##### REFER TO NON-SPEC DOCUMENTATION HERE #####</a>
+</ul>
+
+-->
+<!-- Put @see and @since tags down here. -->
+
+@since 1.5
+
+</body>
+</html>

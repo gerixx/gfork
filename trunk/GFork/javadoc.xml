@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+   Copyright 2010 Gerald Ehmayer
+   
+   This file is part of project GFork.
+
+    GFork is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    GFork is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with GFork.  If not, see <http://www.gnu.org/licenses/>.
+
+-->
+
+<project default="javadoc">
+	<target name="javadoc">
+		<javadoc access="protected" 
+			author="true" 
+			classpath=""
+			destdir="doc" doctitle="GFork - to run tasks in a process" 
+			nodeprecated="false" nodeprecatedlist="false" 
+			noindex="false" 
+			nonavbar="false" notree="false" 
+			packagenames="org.gfork.sample.swing,org.gfork.types,org.gfork.helpers,org.gfork.internal.run,org.gfork.internal.types" 
+			source="1.6" 
+			sourcefiles="src/org/gfork/CallableTask.java,src/org/gfork/swing/JFrameTask.java,src/org/gfork/Linkable.java,src/org/gfork/swing/JFrameFork.java,src/org/gfork/FutureTaskFork.java,src/org/gfork/ForkChain.java,src/org/gfork/ForkCallable.java,src/org/gfork/ForkLink.java,src/org/gfork/Fork.java" 
+			sourcepath="samples;src" 
+			splitindex="true" 
+			use="true" 
+			version="true">
+			<link href="http://java.sun.com/javase/6/docs/api/"/>
+		</javadoc>
+	</target>
+</project>

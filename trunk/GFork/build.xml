@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!--
+   Copyright 2010 Gerald Ehmayer
+   
+   This file is part of project GFork.
+
+    GFork is free software: you can redistribute it and/or modify
+    it under the terms of the GNU Lesser General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    GFork is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU Lesser General Public License for more details.
+
+    You should have received a copy of the GNU Lesser General Public License
+    along with GFork.  If not, see <http://www.gnu.org/licenses/>.
+
+-->
+
+<project default="deploy">
+	<target name="deploy" description="creates deployment bundles, build and javadoc must be finished">
+		<jar destfile="./deploy/gfork.jar" basedir="./bin" />
+		<jar destfile="./deploy/gfork.jar" basedir="." update="true" 
+			 includes="COPYING.LESSER.txt COPYING.txt LICENSE.txt README.txt"/>
+		
+		<jar destfile="./deploy/gfork-src.jar" basedir="./src" />
+		<jar destfile="./deploy/gfork-src.jar" basedir="." update="true" 
+			 includes="COPYING.LESSER.txt COPYING.txt LICENSE.txt README.txt"/>
+		
+		<jar destfile="./deploy/gfork-tests.jar" basedir="./bin-test" />
+		<jar destfile="./deploy/gfork-tests.jar" basedir="." update="true" 
+			 includes="COPYING.LESSER.txt COPYING.txt LICENSE.txt README.txt"/>
+		
+		<jar destfile="./deploy/gfork-tests-src.jar" basedir="./test" />
+		<jar destfile="./deploy/gfork-tests-src.jar" basedir="." update="true" 
+			 includes="COPYING.LESSER.txt COPYING.txt LICENSE.txt README.txt"/>
+		
+		<jar destfile="./deploy/gfork-javadoc.jar" basedir="./doc" />
+		<jar destfile="./deploy/gfork-javadoc.jar" basedir="./doc" update="true" 
+			 includes="COPYING.LESSER.txt COPYING.txt LICENSE.txt README.txt"/>
+
+		<zip destfile="./gfork-0.10.zip">
+			<fileset dir="./deploy"/>
+			<fileset dir="." includes="COPYING.LESSER.txt COPYING.txt LICENSE.txt README.txt logging_forkRunner.properties"/>
+		</zip>
+	</target>
+</project>
