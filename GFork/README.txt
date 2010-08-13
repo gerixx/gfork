@@ -11,8 +11,6 @@ Installation and Usage:
       + creating temp-files using java.io.File.createTempFile(...)
       + executing external programs using java.lang.Runtime.execute(...)
       
-Source files are included in gfork.jar.
-  
 See javadoc of package org.gfork for more details. 
       
 Contact Address:

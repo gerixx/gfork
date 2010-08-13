@@ -41,7 +41,14 @@ import org.gfork.types.Void;
 
 public class ForkRunner {
 	
+	/**
+	 * Code used to exit the fork process when task ends with an exception.
+	 * Can be modified to adjust the preferred exit code to be used by {@link ForkRunner}.
+	 */
+	public static final int EXIT_CODE_ON_EXCEPTION = 4229;
+	
 	private final static Logger log = Logger.getLogger(ForkRunner.class.getName());
+	
 	private static Socket taskInput;
 	private static Socket taskSuccessorSocket;
 
@@ -66,9 +73,10 @@ public class ForkRunner {
 		} catch (final Throwable e) {
 			log.log(Level.SEVERE, "boot error", e);
 			writeExceptionToFile(exceptionFile, e);
+			System.exit(EXIT_CODE_ON_EXCEPTION);
 		}
 		log.info("exit");
-		System.exit(0); // force exit
+		System.exit(0); // try to force exit
 	}
 
 	private static void connectLink(final Arguments a, final Object task) throws UnknownHostException, IOException {
@@ -181,7 +189,6 @@ public class ForkRunner {
 		} catch (final Exception e1) {
 			e1.printStackTrace(System.err);
 		}
-		System.exit(1);
 	}
 
 	private static void writeExceptionObject(final Throwable e, final File exceptionFile) throws IOException {

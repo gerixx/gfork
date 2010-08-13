@@ -89,7 +89,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 
 	private BufferedReader taskStdOutReader;
 
-	private final StringBuilder stdErrText = new StringBuilder();
+	protected final StringBuilder stdErrText = new StringBuilder();
 
 	protected int stdErrSize = 2000;
 
@@ -146,7 +146,21 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 */
 	public interface Listener<T extends Serializable, V extends Serializable> {
 		public void onFinish(final Fork<T,V>  fork, boolean wasKilled) throws IllegalAccessException, InterruptedException;
+		/**
+		 * Signals that fork process exited with an error code, see also {@link Fork#isError()}
+		 * @param fork
+		 * @throws IllegalAccessException
+		 * @throws InterruptedException
+		 */
 		public void onError(final Fork<T,V>  fork) throws IllegalAccessException, InterruptedException;
+		/**
+		 * Signals that fork process ended with an exception, see also {@link Fork#isException()}
+		 * @param fork
+		 * @throws IllegalAccessException
+		 * @throws InterruptedException
+		 * @throws IOException
+		 * @throws ClassNotFoundException
+		 */
 		public void onException(final Fork<T,V>  fork) throws IllegalAccessException, InterruptedException, IOException, ClassNotFoundException;
 	}
 
@@ -306,6 +320,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 				try {
 					waitFor();
 				} catch (final Exception e) {
+					e.printStackTrace();
 					stdErrText.append(String.format("ERROR jforkListenerNotifier: %s%n", e.toString()));
 				}
 			}
@@ -400,7 +415,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 
 	/**
 	 * Waits until task process is finished and indicates if the task process exit value was not zero.
-	 * See also {@link #getStdErr()}.
+	 * See also {@link #getExitValue()}, {@link #getStdErr()}.
 	 * 
 	 * @return true indicates that the task process exited with an error (process exit value != 0)
 	 * @throws InterruptedException
@@ -830,6 +845,15 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 				l.onFinish(this, killed);
 				if (isError()) {
 					l.onError(this);
+				}
+				try {
+					if (isException()) {
+						l.onException(this);
+					}
+				} catch (IOException e) {
+					throw new RuntimeException(e);
+				} catch (ClassNotFoundException e) {
+					throw new RuntimeException(e);
 				}
 			}
 			listeners.clear();
