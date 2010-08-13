@@ -36,6 +36,7 @@ import java.util.GregorianCalendar;
 
 import org.gfork.Fork;
 import org.gfork.helpers.ForkListenerAdapter;
+import org.gfork.internal.run.ForkRunner;
 import org.gfork.tasks.KeyValue;
 import org.gfork.tasks.Task01;
 import org.gfork.tasks.Task02;
@@ -51,7 +52,8 @@ public class ForkTest {
 
 	private String result = "?";
 
-	private Throwable exception;
+	private Throwable exception1;
+	private int errorCode = -1;
 	
 	private boolean onFinished;
 
@@ -492,9 +494,15 @@ public class ForkTest {
 			@Override
 			public void onError(Fork<Task02, Void> fork)
 			throws IllegalAccessException, InterruptedException {
+				assertTrue(fork.isError());
+				errorCode = fork.getExitValue();
+			}
+			@Override
+			public void onException(Fork<Task02, Void> fork)
+			throws IllegalAccessException, InterruptedException {
 				try {
 					assertTrue(fork.isException());
-					exception = fork.getException();
+					exception1 = fork.getException();
 				} catch (IOException e) {
 					e.printStackTrace();
 				} catch (ClassNotFoundException e) {
@@ -507,7 +515,8 @@ public class ForkTest {
 		f.execute();
 		
 		f.waitFor();
-		assertEquals("test exception", exception.getMessage());
+		assertEquals("test exception", exception1.getMessage());
+		assertEquals(ForkRunner.EXIT_CODE_ON_EXCEPTION, errorCode);
 	}
 	
 	@Test
