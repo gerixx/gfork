@@ -22,11 +22,14 @@ package org.gfork;
 
 import static org.junit.Assert.*;
 
+import org.gfork.ForkCallable.CallHandler;
 import org.junit.Before;
 import org.junit.Test;
 
 
 public class ForkCallableTest {
+
+	private int asyncCallCounter;
 
 	@Before
 	public void init() {
@@ -47,4 +50,51 @@ public class ForkCallableTest {
 		assertEquals("hello callable", value);
 		fork.shutdown();
 	}
+	
+	@Test
+	public void testAsyncCalls() throws Exception {
+		asyncCallCounter = 0;
+		MyCallableTask task = new MyCallableTask();
+		ForkCallable<MyCallableTask> fork = new ForkCallable<MyCallableTask>(task);
+		fork.execute();
+		
+		// async calls to fork task
+		CallHandler<org.gfork.types.Void> callbackSet = new ForkCallable.CallHandler<org.gfork.types.Void>() {
+
+			@Override
+			public void onException(Exception e) {
+				fail("not expected: " + e.getMessage());
+			}
+
+			@Override
+			public void onReturn(org.gfork.types.Void returnValue) {
+				asyncCallCounter++;
+			}
+		};
+		CallHandler<String> callbackGet = new ForkCallable.CallHandler<String>() {
+			
+			@Override
+			public void onException(Exception e) {
+				fail("not expected: " + e.getMessage());
+			}
+			
+			@Override
+			public void onReturn(String returnValue) {
+				assertEquals("counter=0", returnValue);
+				asyncCallCounter++;
+			}
+		};
+		
+		assertEquals(0, asyncCallCounter);
+		
+		fork.callAsync(callbackSet, org.gfork.types.Void.class, 
+				task.getClass().getMethod("set", String.class), 
+				"counter=" + asyncCallCounter);
+		fork.callAsync(callbackGet, String.class, 
+				task.getClass().getMethod("get"));
+		
+		Thread.sleep(2000);
+		assertEquals(2, asyncCallCounter);
+	}
 }
+

@@ -1,7 +1,6 @@
-<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
-<html>
-<head>
-<!--
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head>
+<meta content="text/html; charset=unicode" http-equiv="Content-Type"><!--
 
   @(#)package.html	1.60 98/01/27
 
@@ -23,18 +22,13 @@
     along with GFork.  If not, see <http://www.gnu.org/licenses/>.
 
 -->
-</head>
-<body bgcolor="white">
-
-Convenience Java API to run code referred to as <i>task</i> in a sub process, which is 
-referred to as <i>fork</i>. 
-Tasks can be implemented in any public method of a <code>Serializable</code> class. Per
-default method <code>public void run()</code> of interface <code>Runnable</code> is used
-to execute a task.
-<p>
-Example:
-<pre>
-	Fork&lt;MyTask, Void&gt; f = new Fork&lt;MyTask, Void&gt;(new MyTask());
+<meta name="GENERATOR" content="MSHTML 8.00.6001.18939"></head>
+<body bgcolor="white">Convenience Java API to run code referred to as <i>task</i> 
+in a sub process, which is referred to as <i>fork</i>. Tasks can be implemented 
+in any public method of a <code>Serializable</code> class. Per default method 
+<code>public void run()</code> of interface <code>Runnable</code> is used to 
+execute a task. 
+<p>Example: <pre>	Fork&lt;MyTask, Void&gt; f = new Fork&lt;MyTask, Void&gt;(new MyTask());
 	
 	f.execute();
 	
@@ -48,50 +42,44 @@ Example:
 			...
 		}
 	}
-</pre>
-The fork process ends when the <code>MyTask</code> method <code>public void run()</code> finishes.
-</p>
-
+</pre>The fork process ends when the <code>MyTask</code> method <code>public 
+void run()</code> finishes. 
+<p></p>
 <h2>Introduction</h2>
-
-Term <i>fork</i> is borrowed from fork processes on Unix systems. In Java are Unix like forks 
-not possible at moment. The intention of this package is 
-to come as close as possible to real forks. The created Java subprocess that 
-executes a Java <code>Fork</code> inherits the environment of the parent VM process per default,
-including class path and system properties. 
-Furthermore the API gives as much as possible freedom in implementing the task that
-should be executed in the subprocess. 
-<p>
-Terms of conditions for task execution:
+<p>Term fork is borrowed from fork processes on Unix systems. In Java 6 are Unix 
+like forks not possible. The upcoming release of Java 7 (end of year 2010) will 
+support a Fork/Join mechanism, which seems to come very close to real forks, but 
+also with some restrictions, see below <span lang="EN-US">Java 7 Fork/Join 
+Extension</span>. The intention of this package is to provide something similar 
+by using Java sub processes. The created process that executes a task in a Java 
+Fork inherits the environment of the parent VM process per default, including 
+class path and system properties. The API gives as much as possible freedom in 
+implementing the task that should be executed in the subprocess, furthermore the 
+final state of the task object is propagated back to the parent process. </p>
+<p>Terms of conditions for task execution: 
 <ul>
-<li>Task object implements interface <code>Serializable</code>.</li>
-<li>Task object implements a public startup method. If this method has a return value and/or arguments 
-they need also to implement interface <code>Serializable</code>.</li>
-<li>Java Reflection is enabled from a security perspective.</li>
-</ul>
-</p>
-
-<p>Object Serialization is needed to pass a task object to the internal <code>ForkRunner</code>
-that implements the main method to launch a fork. <code>ForkRunner</code> invokes 
-the chosen task method via Java Reflection. Vice versa the task object, 
-its state and an optional return value of the task method are propagated back 
-to the parent process using Object Serialization when the task method returns.
-</p>
-
-<p>Reflection is used to give flexibility in choosing the task method 
-to be run in the fork subprocess. As a user of the API you have to identify
-the task method as object of type <code>java.lang.reflect.Method</code>, see also Reflection packages.  
-Alternatively <code>public void run()</code> of a <code>Runnable</code> task object
-is used per default.
-</p>
-
-<h2>Example: Task Method with Return Value</h2>
-
-The following sample shows a fork running task method <code>encodeText</code> with one <code>String</code> argument
-and a <code>String</code> return value:
-
-<pre>
-	Fork&lt;MyTask, String&gt; f = 
+  <li>Task object implements interface <code>Serializable</code>. 
+  <li>Task object implements a public startup method. If this method has a 
+  return value and/or arguments they need also to implement interface 
+  <code>Serializable</code>. 
+  <li>Permission to use Java Reflection.
+  <li>Permission to create, read and write temporary files.
+  <li>Permission to establish socket connections and listeners.</li></ul>
+<p></p>
+<p>Object Serialization is needed to pass a task object to the internal 
+<code>ForkRunner</code> that implements the main method to launch a fork. 
+<code>ForkRunner</code> invokes the chosen task method via Java Reflection. Vice 
+versa the task object, its state and an optional return value of the task method 
+are propagated back to the parent process using Object Serialization when the 
+task method returns. </p>
+<p>Reflection is used to give flexibility in choosing the task method to be run 
+in the fork subprocess. As a user of the API you have to identify the task 
+method as object of type <code>java.lang.reflect.Method</code>, see also 
+Reflection packages. Alternatively <code>public void run()</code> of a 
+<code>Runnable</code> task object is used per default. </p>
+<h2>Example: Task Method with Return Value</h2>The following sample shows a fork 
+running task method <code>encodeText</code> with one <code>String</code> 
+argument and a <code>String</code> return value: <pre>	Fork&lt;MyTask, String&gt; f = 
 		new Fork&lt;MyTask, String&gt;(
 			new MyTask(), 
 			MyTask.class.getMethod("encodeText", String.class), 
@@ -115,10 +103,29 @@ and a <code>String</code> return value:
 		}
 	}
 </pre>
-For more examples and usage scenarios inspect the JUnit tests, see gfork-tests.jar 
-and the sample application, see <code>org.gfork.swing</code> in gfork.jar.
-
-<!--
+<p>For more examples and usage scenarios inspect the JUnit tests, see 
+gfork-tests.jar and the sample application, see <code>org.gfork.swing</code> in 
+gfork.jar. </p>
+<h2><span lang="EN-US">Java 7 Fork/Join Extension (JSR 166)</span></h2>
+<ul>
+  <li>a lightweight task framework to split problems into many tasks to take 
+  advantage of dozens to hundreds of local processors/cores 
+  <li>more efficient than threads, at the price of some usage limitations, e.g., 
+  operating on purely isolated objects… (see Java 7 ForkJoinTask) 
+  <li>to automate parallel aggregate operations on collections of elements (see 
+  Java 7 RecursiveAction, RecursiveTask) </li></ul>
+<p>Java Concurrency Wiki, <a 
+href="http://artisans-serverintellect-com.si-eioswww6.com/default.asp?W1">http://artisans-serverintellect-com.si-eioswww6.com/default.asp?W1</a><br>jsr166y 
+overview, <a 
+href="http://artisans-serverintellect-com.si-eioswww6.com/default.asp?W9">http://artisans-serverintellect-com.si-eioswww6.com/default.asp?W9</a><br>jsr166y 
+examples, <a 
+href="http://artisans-serverintellect-com.si-eioswww6.com/default.asp?W32">http://artisans-serverintellect-com.si-eioswww6.com/default.asp?W32</a><br>Doug 
+Lea, A Java Fork/Join Framework, <a 
+href="http://gee.cs.oswego.edu/dl/papers/fj.pdf">http://gee.cs.oswego.edu/dl/papers/fj.pdf</a><br>java.util.concurrent.ForkJoinTask, 
+<a 
+href="http://download.java.net/jdk7/docs/api/java/util/concurrent/ForkJoinTask.html">http://download.java.net/jdk7/docs/api/java/util/concurrent/ForkJoinTask.html</a> 
+</p>
+<p><!--
 
 <h2>Package Specification</h2>
 
@@ -134,10 +141,4 @@ For overviews, tutorials, examples, guides, and tool documentation, please see:
   <li><a href="">##### REFER TO NON-SPEC DOCUMENTATION HERE #####</a>
 </ul>
 
--->
-<!-- Put @see and @since tags down here. -->
-
-@since 1.5
-
-</body>
-</html>
+--><!-- Put @see and @since tags down here. -->@since 1.5 </p></body></html>

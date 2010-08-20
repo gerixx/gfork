@@ -102,8 +102,10 @@ public abstract class CallableTask extends LinkableAdapter implements Runnable {
 						log.fine(String.format("return value '%s' of type %s", retVal, method.getReturnType()));
 						if (method.getReturnType() != void.class) {
 							oout.writeObject(retVal);
-							oout.flush();
+						} else {
+							oout.writeObject("void");
 						}
+						oout.flush();
 					}
 				} catch (final SocketException e) {
 					log.log(Level.WARNING, "call listener socket", e);
