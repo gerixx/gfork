@@ -26,8 +26,11 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.lang.reflect.Method;
 import java.net.Socket;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 
 import org.gfork.types.MethodArgumentsException;
+import org.gfork.types.Void;
 
 /**
  * This class provides methods <code>call</code> which can be used to call 
@@ -44,23 +47,60 @@ public class ForkCallable<TASK_TYPE extends CallableTask> extends ForkLink<TASK_
 	private ObjectOutputStream oout;
 	private ObjectInputStream oin; // use getter for access
 	private Socket ioSocket;
-	private TASK_TYPE task;
+	private final TASK_TYPE task;
+	private AsyncCallThread asyncCallThread;
 
+	/**
+	 * Callback interface needed for asynchronous task calls.
+	 * See {@link ForkCallable#callAsync(CallHandler, Method, Serializable...)}.
+	 * 
+	 * @author Gerald Ehmayer
+	 *
+	 * @param <R> return value type
+	 */
+	public interface CallHandler<R extends Serializable> {
+		/**
+		 * Implement this to handle returning asynchronous call and to receive
+		 * the return value of the call. In cases of void return values it will 
+		 * be invoked with return value of type {@link Void}.
+		 * @param returnValue
+		 */
+		public void onReturn(R returnValue);
+		/**
+		 * Implement this to handle exceptions thrown by the asynchronous call.
+		 * @param e
+		 */
+		public void onException(Exception e);
+	}
+	
 	@SuppressWarnings("unchecked")
-	public <T extends Serializable & Runnable> ForkCallable(T task) throws IOException, SecurityException,
+	public <T extends Serializable & Runnable> ForkCallable(final T task) throws IOException, SecurityException,
 			NoSuchMethodException, MethodArgumentsException {
 		super(task);
 		this.task = (TASK_TYPE) task;
 	}
 
 	/**
-	 * Calls any remote public method of the linkable task object.
+	 * Calls any remote public void method of the linkable task object.
 	 * 
 	 * @param method method to be called which has no return value
 	 * @param args arguments of the method
 	 * @throws IOException 
 	 */
 	public final void call(final Method method, final Serializable... args) throws IOException {
+		if (method.getReturnType() != void.class) {
+			throw new IllegalArgumentException(String.format("Only method with void return type are allowed, but was '%s'", method.getReturnType().toString()));
+		}
+		sendCallData(method, args);
+		try {
+			getOin().readObject(); // dummy return value needed to block until remote execution of the call is finished
+		} catch (ClassNotFoundException e) {
+			throw new RuntimeException(e); // probably a bug
+		} 
+	}
+
+	private void sendCallData(final Method method, final Serializable... args)
+			throws IOException {
 		if (!isExecuting()) {
 			throw new IllegalStateException(FORK_WAS_NOT_STARTED_YET);
 		}
@@ -89,14 +129,41 @@ public class ForkCallable<TASK_TYPE extends CallableTask> extends ForkLink<TASK_
 	 * 
 	 */
 	@SuppressWarnings("unchecked")
-	public final <T extends Serializable> T call(Class<T> typeReturnValue, final Method method,
+	public final <T extends Serializable> T call(final Class<T> typeReturnValue, final Method method,
 			final Serializable... args) throws IOException, ClassNotFoundException {
 		synchronized (oout) {
-			call(method, args);
+			sendCallData(method, args);
 			return (T) getOin().readObject();
 		}
 	}
 
+	/**
+	 * Calls a method of the remote task of this fork process and returns immediately.
+	 * With the current implementation multiple asynchronous and synchronous calls will be serialized!
+	 * So this cannot be used to implement parallel execution within the remote task execution.
+	 * Furthermore it is important to be aware about serialized execution when
+	 * calls of synchronous and asynchronous methods are mixed for the same fork.
+	 * 
+	 * @param <T> return value type, use {@link Void} for void return values
+	 * @param callback handler that will be invoked when the call returns
+	 * @param method method to be called
+	 * @param args method arguments
+	 * @throws IOException
+	 * @throws ClassNotFoundException
+	 * @throws InterruptedException 
+	 */
+	public final <T extends Serializable> void callAsync(final CallHandler<T> callback, final Class<T> typeReturnValue, final Method method,
+			final Serializable... args) throws IOException, ClassNotFoundException, InterruptedException {
+		synchronized (oout) {
+			if (asyncCallThread == null) {
+				asyncCallThread = new AsyncCallThread();
+				asyncCallThread.setDaemon(true);
+				asyncCallThread.start();
+			}
+			asyncCallThread.put(new CallInfo(typeReturnValue, callback, method, args));
+		}
+	}
+	
 	@Override
 	public synchronized void execute() throws Exception {
 		super.execute();
@@ -147,8 +214,98 @@ public class ForkCallable<TASK_TYPE extends CallableTask> extends ForkLink<TASK_
 		if (!isExecuting()) {
 			throw new IllegalStateException(FORK_WAS_NOT_STARTED_YET);
 		}
+		if (asyncCallThread != null) {
+			asyncCallThread.shutdown();
+		}
 		final Method method = task.getClass().getMethod("shutdown");
 		this.call(method);
 	}
 
+	private class CallInfo {
+	
+		@SuppressWarnings("unchecked")
+		private final CallHandler callback;
+		private final Method method;
+		private final Serializable[] args;
+		@SuppressWarnings("unchecked")
+		private final Class typeReturnValue;
+	
+		@SuppressWarnings("unchecked")
+		public CallInfo(final Class typeReturnValue, final CallHandler callback, final Method method,
+				final Serializable[] args) {
+					this.typeReturnValue = typeReturnValue;
+					this.callback = callback;
+					this.method = method;
+					this.args = args;
+		}
+	
+		public Method getMethod() {
+			return method;
+		}
+	
+		public Serializable[] getArgs() {
+			return args;
+		}
+		
+		@SuppressWarnings("unchecked")
+		public CallHandler getCallHandler() {
+			return callback;
+		}
+	
+		@SuppressWarnings("unchecked")
+		public Class getTypeReturnValue() {
+			return typeReturnValue;
+		}
+	}
+
+	private class AsyncCallThread extends Thread {
+		private static final int QUEUE_POLL_SECONDS = 1;
+		private LinkedBlockingDeque<CallInfo> asyncCallQueue = new LinkedBlockingDeque<CallInfo>();
+		private boolean stop;
+		
+		public AsyncCallThread() {
+			setName("jforkAsyncCalls");
+		}
+		public synchronized void shutdown() {
+			stop = true;
+			asyncCallQueue.clear();
+			try {
+				Thread.sleep(QUEUE_POLL_SECONDS + 100);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+				stdErrText.append(String.format("ERROR %s: %s%n", getName(), e.toString()));
+			}
+		}
+		public synchronized void put(CallInfo callInfo) throws InterruptedException {
+			asyncCallQueue.put(callInfo);
+		}
+		
+		@SuppressWarnings("unchecked")
+		@Override
+		public void run() {
+			CallInfo callInfo = null;
+			try {
+				while(!isFinished() && !stop) {
+					callInfo = asyncCallQueue.poll(QUEUE_POLL_SECONDS, TimeUnit.SECONDS);
+					if (callInfo != null) {
+						synchronized (oout) {
+							if (callInfo.getTypeReturnValue() != Void.class) {
+								final Serializable result = call(callInfo.getTypeReturnValue(), callInfo.getMethod(), callInfo.getArgs());
+								callInfo.getCallHandler().onReturn(result);
+							} else {
+								call(callInfo.getMethod(), callInfo.getArgs());
+								callInfo.getCallHandler().onReturn(new Void());
+							}
+						}
+					}
+				}
+			} catch (final Exception e) {
+				if (callInfo != null) {
+					callInfo.getCallHandler().onException(e);
+				}
+				e.printStackTrace();
+				stdErrText.append(String.format("ERROR %s: %s%n", getName(), e.toString()));
+			}
+		}
+	}
 }

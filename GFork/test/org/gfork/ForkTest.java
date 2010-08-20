@@ -316,6 +316,7 @@ public class ForkTest {
 		Thread.sleep(1500);
 		
 		assertFalse(notifyKill);
+		assertFalse(f1.isFinished());
 		f1.kill();
 		
 		assertTrue(f1.isFinished());
