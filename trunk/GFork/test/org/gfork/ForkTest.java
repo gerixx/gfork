@@ -85,7 +85,7 @@ public class ForkTest {
 		System.out.println("ForkTest.testDefault()");
 		Fork<Task01, Void> f = new Fork<Task01, Void>(new Task01());
 		
-		System.getProperties().list(System.out);
+//		System.getProperties().list(System.out);
 		
 		f.execute();
 		

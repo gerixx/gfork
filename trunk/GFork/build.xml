@@ -41,7 +41,7 @@
 		<jar destfile="./deploy/gfork-javadoc.jar" basedir="./doc" update="true" 
 			 includes="COPYING.LESSER.txt COPYING.txt LICENSE.txt README.txt"/>
 
-		<zip destfile="./gfork-0.10.zip">
+		<zip destfile="./gfork-0.12.zip">
 			<fileset dir="./deploy"/>
 			<fileset dir="." includes="COPYING.LESSER.txt COPYING.txt LICENSE.txt README.txt logging_forkRunner.properties"/>
 		</zip>

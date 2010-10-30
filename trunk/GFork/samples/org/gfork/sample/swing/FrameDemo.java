@@ -90,7 +90,6 @@ public class FrameDemo {
 			Random rand = new Random();
 			while (! isAllFinished(fork1, fork2, fork3, fork4)) {
 				Point pos = new Point(rand.nextInt(300), rand.nextInt(200));
-				int paintIntervalMillis = 1000;
 				if (!fork1.isFinished()) {
 					paintDuke(fork1, pos);
 				} 
@@ -103,7 +102,7 @@ public class FrameDemo {
 				if (!fork4.isFinished()) {
 					paintDuke(fork4, pos);
 				} 
-				Thread.sleep(paintIntervalMillis);
+				Thread.sleep(1000);
 			}
 		} catch (Exception e) {
 			e.printStackTrace(); // unexpected error

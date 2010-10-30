@@ -33,7 +33,8 @@ import org.gfork.internal.types.TaskDelegate;
 import org.gfork.types.MethodArgumentsException;
 
 /**
- * This class provides the same interface as {@link FutureTask} of the Java Concurrency API.
+ * This class implements {@link RunnableFuture} in order to provide the same 
+ * interface as {@link FutureTask} of the Java Concurrency API.
  * Instead of running a task in a thread, this implementation spawns a fork subprocess to run a 
  * given task.
  * 
