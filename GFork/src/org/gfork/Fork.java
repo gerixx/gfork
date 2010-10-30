@@ -123,8 +123,6 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 
 	protected List<Listener<TASK_TYPE,RETURN_TYPE>> listeners;
 	
-	private Thread waitForFinishedThread;
-
 	private boolean finished;
 
 	private TASK_TYPE taskResult;
@@ -134,6 +132,10 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	private boolean killed;
 
 	private boolean skipMergeSystenProperties;
+
+	private Object waitForSignal = new Object();
+
+	private boolean processListenersInitiated;
 
 	/**
 	 * Fork listener interface to be implemented to handle events.
@@ -312,20 +314,6 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 		taskErrorReader = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
 		readError();
 		readStdOut();
-		
-		waitForFinishedThread = new Thread("jforkWaitForFinishedThread") {
-			// needed to notify listeners after execution
-			@Override
-			public void run() {
-				try {
-					waitFor();
-				} catch (final Exception e) {
-					e.printStackTrace();
-					stdErrText.append(String.format("ERROR jforkListenerNotifier: %s%n", e.toString()));
-				}
-			}
-		};
-		waitForFinishedThread.start();
 	}
 
 	public boolean isExecuting() {
@@ -340,6 +328,13 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 * @throws IllegalStateException the fork was not started yet, it is required to invoke {@link #execute()} at first
 	 */
 	public synchronized int waitFor() throws InterruptedException, IllegalAccessException {
+		synchronized(waitForSignal) {
+			processListenersInitiated = true;
+		}
+		return waitForInternal(false);
+	}
+	
+	private int waitForInternal(boolean skipJoinOutThread) throws InterruptedException, IllegalAccessException {
 		if (exec == null) {
 			throw new IllegalStateException(FORK_WAS_NOT_STARTED_YET);
 		}
@@ -348,8 +343,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 		}
 		
 		stdErrThread.join();
-		stdOutThread.join();
-		
+		if (! skipJoinOutThread) {
+			stdOutThread.join();
+		}
 		final int retVal = exec.waitFor();
 		
 		finished = true; // also used to avoid recursive calls
@@ -360,7 +356,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	
 	/**
 	 * Retrieves finished status of the fork task, call is non blocking.
-	 * @return true indicates fork task is finished
+	 * @return true indicates fork task is finished and listener processing is completed
 	 */
 	public final boolean isFinished() {
 		return finished;
@@ -564,11 +560,14 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 * @throws IllegalAccessException 
 	 */
 	public void kill() throws IOException, IllegalAccessException, InterruptedException {
+		if (exec == null) {
+			throw new IllegalStateException(FORK_WAS_NOT_STARTED_YET);
+		}
 		killed = true;
 		stdErrThread.interrupt();
 		stdOutThread.interrupt();
 		exec.destroy();
-		processListeners();
+		waitFor();
 	}
 
 	protected void setStatusInfo(final String statusInfo) {
@@ -793,7 +792,8 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 					}
 					taskErrorReader.close();
 				} catch (final Exception e) {
-					stdErrText.append(String.format("ERROR jforkReadError: %s%n", e.toString()));
+					e.printStackTrace();
+					stdErrText.append(String.format("ERROR thread jforkReadError: %s%n", e.toString()));
 				}
 			}
 		};
@@ -822,9 +822,20 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 					}
 					taskStdOutReader.close();
 				} catch (final Exception e) {
-					stdOutText.append(String.format("ERROR jforkReadStdOut: %s%n", e.toString()));
+					e.printStackTrace();
+					stdOutText.append(String.format("ERROR thread jforkReadStdOut run: %s%n", e.toString()));
 				}
+				try {
+					synchronized(waitForSignal) {
+						if (! processListenersInitiated) 
+							waitForInternal(true); // needed to force listener processing
+					}
+				} catch (final Exception e) {
+					e.printStackTrace();
+					stdOutText.append(String.format("ERROR thread jforkReadStdOut wait: %s%n", e.toString()));
+				} 
 			}
+
 		};
 		stdOutThread.start();
 	}
@@ -843,20 +854,22 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 		if (listeners != null && !listeners.isEmpty()) {
 			for (final Fork.Listener<TASK_TYPE, RETURN_TYPE> l : listeners) {
 				l.onFinish(this, killed);
-				if (isError()) {
-					l.onError(this);
-				}
-				try {
-					if (isException()) {
-						l.onException(this);
+				if (!killed){
+					if (isError()) {
+						l.onError(this);
 					}
-				} catch (IOException e) {
-					throw new RuntimeException(e);
-				} catch (ClassNotFoundException e) {
-					throw new RuntimeException(e);
+					try {
+						if (isException()) {
+							l.onException(this);
+						}
+					} catch (IOException e) {
+						throw new RuntimeException(e);
+					} catch (ClassNotFoundException e) {
+						throw new RuntimeException(e);
+					}
 				}
 			}
-			listeners.clear();
+			listeners = null;
 		}
 	}
 
