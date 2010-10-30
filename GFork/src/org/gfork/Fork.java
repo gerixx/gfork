@@ -133,7 +133,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 
 	private boolean skipMergeSystenProperties;
 
-	private Object waitForSignal = new Object();
+	private final Object waitForSignal = new Object();
 
 	private boolean processListenersInitiated;
 
@@ -334,7 +334,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 		return waitForInternal(false);
 	}
 	
-	private int waitForInternal(boolean skipJoinOutThread) throws InterruptedException, IllegalAccessException {
+	private int waitForInternal(final boolean skipJoinOutThread) throws InterruptedException, IllegalAccessException {
 		if (exec == null) {
 			throw new IllegalStateException(FORK_WAS_NOT_STARTED_YET);
 		}
@@ -580,7 +580,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 
 	private void checkMethodArgs(final Method method, final Serializable[] args) throws MethodArgumentsException {
 		final Class<?>[] parameterTypes = method.getParameterTypes();
-		boolean arrayExpected = parameterTypes.length == 1 && parameterTypes[0].isArray() ;
+		final boolean arrayExpected = parameterTypes.length == 1 && parameterTypes[0].isArray() ;
 		if (arrayExpected && !args.getClass().isArray() && !(args.length == 1) &&
 				!args[0].getClass().isArray()) {
 			throw new MethodArgumentsException(
@@ -701,7 +701,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 		if (remoteSystemProperties == null) {
 			Fork.remoteSystemProperties = retrieveRemoteSystemProperties();
 		}
-		for (String arg : vmArgs) {
+		for (final String arg : vmArgs) {
 			System.out.println(arg);
 		}
 		final Set<Entry<Object,Object>> entrySet = System.getProperties().entrySet();
@@ -713,8 +713,8 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	}
 
 	private boolean isPropertyAlreadySetAsOption(
-			Entry<Object, Object> localProperty, List<String> vmArgs) {
-		for (String vmArg : vmArgs) { 
+			final Entry<Object, Object> localProperty, final List<String> vmArgs) {
+		for (final String vmArg : vmArgs) { 
 			if (vmArg.contains("-D" + localProperty.getKey() + '=')) { // could be optimized
 				return true;
 			}
@@ -862,9 +862,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 						if (isException()) {
 							l.onException(this);
 						}
-					} catch (IOException e) {
+					} catch (final IOException e) {
 						throw new RuntimeException(e);
-					} catch (ClassNotFoundException e) {
+					} catch (final ClassNotFoundException e) {
 						throw new RuntimeException(e);
 					}
 				}
