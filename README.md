@@ -86,7 +86,5 @@ For more capabilities, e.g., callable tasks and usage scenarios inspect javadoc 
   * more efficient than threads, at the price of some usage limitations, e.g., operating on purely isolated objects… (see Java 7 doc of `ForkJoinTask`) 
   * to automate parallel aggregate operations on collections of elements (see Java 7 doc of `RecursiveAction`, `RecursiveTask`) 
 
-Java Concurrency Wiki, http://artisans-serverintellect-com.si-eioswww6.com/default.asp?W1
-<br>jsr166y overview, http://artisans-serverintellect-com.si-eioswww6.com/default.asp?W9
-<br>jsr166y examples, http://artisans-serverintellect-com.si-eioswww6.com/default.asp?W32
+Java Concurrency Wiki, https://en.wikipedia.org/wiki/Java_concurrency
 <br>Doug Lea, A Java Fork/Join Framework, http://gee.cs.oswego.edu/dl/papers/fj.pdf
