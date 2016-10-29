@@ -57,7 +57,7 @@ public abstract class LinkableAdapter implements Linkable {
 	}
 
 	@Override
-	public void init() throws IOException {
+	public void init(boolean isLoggingEnabled) throws IOException {
 	}
 	
 }

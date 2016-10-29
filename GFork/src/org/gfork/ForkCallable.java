@@ -223,14 +223,14 @@ public class ForkCallable<TASK_TYPE extends CallableTask> extends ForkLink<TASK_
 
 	private class CallInfo {
 	
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings("rawtypes")
 		private final CallHandler callback;
 		private final Method method;
 		private final Serializable[] args;
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings("rawtypes")
 		private final Class typeReturnValue;
 	
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings("rawtypes")
 		public CallInfo(final Class typeReturnValue, final CallHandler callback, final Method method,
 				final Serializable[] args) {
 					this.typeReturnValue = typeReturnValue;
@@ -247,12 +247,12 @@ public class ForkCallable<TASK_TYPE extends CallableTask> extends ForkLink<TASK_
 			return args;
 		}
 		
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings("rawtypes")
 		public CallHandler getCallHandler() {
 			return callback;
 		}
 	
-		@SuppressWarnings("unchecked")
+		@SuppressWarnings("rawtypes")
 		public Class getTypeReturnValue() {
 			return typeReturnValue;
 		}
@@ -300,10 +300,10 @@ public class ForkCallable<TASK_TYPE extends CallableTask> extends ForkLink<TASK_
 					}
 				}
 			} catch (final Exception e) {
-				if (callInfo != null) {
+				e.printStackTrace();
+				if (callInfo != null && callInfo.getCallHandler() != null) {
 					callInfo.getCallHandler().onException(e);
 				}
-				e.printStackTrace();
 				stdErrText.append(String.format("ERROR %s: %s%n", getName(), e.toString()));
 			}
 		}

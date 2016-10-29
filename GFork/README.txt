@@ -12,3 +12,6 @@ Installation and Usage:
       + executing external programs using java.lang.Runtime.execute(...)
       
 See javadoc of package org.gfork for more details. 
+      
+Contact Address:
+  gerald.ehmayer@gmail.com

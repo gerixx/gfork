@@ -37,9 +37,9 @@ import java.util.Collection;
  * @author Gerald Ehmayer
  *
  */
-@SuppressWarnings("unchecked")
 public class ForkChain {
 
+	@SuppressWarnings("rawtypes")
 	private final ForkLink[] chain;
 	private boolean executing;
 	private ServerSocket endListener;
@@ -52,6 +52,7 @@ public class ForkChain {
 	 * 
 	 * @param chain array of Fork elements that will be tied together
 	 */
+	@SuppressWarnings("rawtypes")
 	public ForkChain(final ForkLink... chain) {
 		if (chain == null) {
 			throw new IllegalArgumentException("Null not allowed for parameter chain.");
@@ -59,10 +60,12 @@ public class ForkChain {
 		this.chain = chain;
 	}
 	
+	@SuppressWarnings("rawtypes")
 	public ForkChain(final Collection<ForkLink> chain) {
 		this((ForkLink[]) chain.toArray(new ForkLink[chain.size()]));
 	}
 	
+	@SuppressWarnings("rawtypes")
 	public synchronized void execute() throws Exception {
 		if (executing) {
 			throw new IllegalStateException("Fork chain is already executing.");

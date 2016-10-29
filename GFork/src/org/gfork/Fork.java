@@ -131,11 +131,13 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 
 	private boolean killed;
 
-	private boolean skipMergeSystenProperties;
+	public boolean skipMergeSystenProperties;
 
 	private final Object waitForSignal = new Object();
 
 	private boolean processListenersInitiated;
+
+	private String classpath;
 
 	/**
 	 * Fork listener interface to be implemented to handle events.
@@ -184,7 +186,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 
 	/**
 	 * Constructs a Fork object with a task and its method to be executed in a
-	 * new child process, ee also {@link #execute()}.
+	 * new child process, see also {@link #execute()}.
 	 * 
 	 * @param task a serializable object that contains parameter "method" to execute
 	 * @param method public method of the tasks class that should be executed
@@ -284,6 +286,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 		this.workingDir = workingDirFile;
 	}
 
+	public void setClasspath(final String classpath) {
+		this.classpath = classpath;
+	}
 	public synchronized void addListener(final Listener<TASK_TYPE, RETURN_TYPE> listener) {
 		if (listeners == null) {
 			listeners = new ArrayList<Listener<TASK_TYPE,RETURN_TYPE>>();
@@ -308,7 +313,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 		if (isExecuting()) {
 			throw new IllegalStateException(FORK_IS_ALREADY_EXECUTING);
 		}
-		exec = Runtime.getRuntime().exec(createCmdArray(), null, workingDir);
+		ProcessBuilder pb = new ProcessBuilder(createCmdArray());
+		pb.directory(workingDir);
+		exec = pb.start();
 		
 		taskStdOutReader = new BufferedReader(new InputStreamReader(exec.getInputStream()));
 		taskErrorReader = new BufferedReader(new InputStreamReader(exec.getErrorStream()));
@@ -316,8 +323,20 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 		readStdOut();
 	}
 
+	/**
+	 * Indicates if the fork process is already or still running.
+	 * @return true if fork process is running
+	 */
 	public boolean isExecuting() {
-		return exec != null;
+		if (exec == null) {
+			return false;
+		}
+		try {
+			exec.exitValue();
+			return false;
+		} catch (IllegalThreadStateException e) {
+			return true;
+		}
 	}
 
 	/**
@@ -386,6 +405,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 				fin = new FileInputStream(methodRetValFile);
 				final ObjectInputStream oin = new ObjectInputStream(fin);
 				returnValue = (RETURN_TYPE) oin.readObject();
+				oin.close();
 				return returnValue;
 			} catch (final Exception e) {
 				throw new RuntimeException(e);
@@ -507,9 +527,33 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 * @throws IllegalAccessException 
 	 */
 	public String getStdOut() throws InterruptedException, IllegalAccessException {
-		return stdOutText.toString();
+		synchronized(stdOutText) {
+			return stdOutText.toString();
+		}
 	}
 
+	/**
+	 * Returns stdout buffer and deletes it.
+	 * @see #getStdOut()
+	 * @return current standard output buffer contentse
+	 * @throws InterruptedException
+	 * @throws IllegalAccessException
+	 */
+	public String pullStdOut() throws InterruptedException, IllegalAccessException {
+		final String ret;
+		synchronized(stdOutText) {
+			ret = stdOutText.toString();
+			stdOutText.delete(0, stdOutText.length());
+		}
+		return ret;
+	}
+	
+	public boolean hasStdOut() {
+		synchronized(stdOutText) {
+			return stdOutText.length() > 0;
+		}
+	}
+	
 	/**
 	 * Set maximum standard output buffer size. Default is 2000 characters.
 	 * @param characters maximum output size in characters + buffering of 1000 characters
@@ -683,7 +727,11 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 
 	private void createAndAddJvmOptions(final List<String> vmArgs) {
 		vmArgs.add("-cp");
-		vmArgs.add(System.getProperty("java.class.path"));
+		if (classpath != null) {
+			vmArgs.add(classpath);
+		} else {
+			vmArgs.add(System.getProperty("java.class.path"));
+		}
 		if (vmOptions != null && !vmOptions.isEmpty()) {
 			vmArgs.addAll(vmOptions);
 		} 
@@ -700,9 +748,6 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	private void mergeSystemProperties(final List<String> vmArgs) {
 		if (remoteSystemProperties == null) {
 			Fork.remoteSystemProperties = retrieveRemoteSystemProperties();
-		}
-		for (final String arg : vmArgs) {
-			System.out.println(arg);
 		}
 		final Set<Entry<Object,Object>> entrySet = System.getProperties().entrySet();
 		for (final Entry<Object,Object> localProperty : entrySet) {
@@ -809,9 +854,11 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 						if (getStatusInfo() == null) {
 							setStatusInfo(line); // 1st line used for fork process status info
 						} else {
-							stdOutText.append(line).append(NL);
-							if (stdOutText.length() > stdOutSize + 1000) {
-								stdOutText.delete(0, 500);
+							synchronized(stdOutText) {
+								stdOutText.append(line).append(NL);
+								if (stdOutText.length() > stdOutSize + 1000) {
+									stdOutText.delete(0, 500);
+								}
 							}
 							if (stdOutWriter != null) {
 								stdOutWriter.write(line);
@@ -823,7 +870,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 					taskStdOutReader.close();
 				} catch (final Exception e) {
 					e.printStackTrace();
-					stdOutText.append(String.format("ERROR thread jforkReadStdOut run: %s%n", e.toString()));
+					synchronized(stdOutText) {
+						stdOutText.append(String.format("ERROR thread jforkReadStdOut run: %s%n", e.toString()));
+					}
 				}
 				try {
 					synchronized(waitForSignal) {
@@ -832,7 +881,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 					}
 				} catch (final Exception e) {
 					e.printStackTrace();
-					stdOutText.append(String.format("ERROR thread jforkReadStdOut wait: %s%n", e.toString()));
+					synchronized(stdOutText) {
+						stdOutText.append(String.format("ERROR thread jforkReadStdOut wait: %s%n", e.toString()));
+					}
 				} 
 			}
 

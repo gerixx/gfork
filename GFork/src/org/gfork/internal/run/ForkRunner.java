@@ -97,7 +97,7 @@ public class ForkRunner {
 			linkableTask.setPredTaskWriteStream(taskInput.getOutputStream());
 			taskPredecessorSocket.close();
 			log.info("linkable task input stream set");
-			linkableTask.init();
+			linkableTask.init(a.loggingEnabled);
 			log.info("linkable task initialized");
 		} else {
 			System.out.println("port:null");

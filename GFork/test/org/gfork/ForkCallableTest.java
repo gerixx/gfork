@@ -20,7 +20,8 @@
 
 package org.gfork;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
 
 import org.gfork.ForkCallable.CallHandler;
 import org.junit.Before;
@@ -48,6 +49,9 @@ public class ForkCallableTest {
 		fork.call(task.getClass().getMethod("set", String.class), "hello callable");
 		String value = fork.call(String.class, task.getClass().getMethod("get"));
 		assertEquals("hello callable", value);
+		fork.call(task.getClass().getMethod("set", String.class), "hello callable-1");
+		value = fork.call(String.class, task.getClass().getMethod("get"));
+		assertEquals("hello callable-1", value);
 		fork.shutdown();
 	}
 	

@@ -63,8 +63,9 @@ public interface Linkable extends Serializable {
 	/**
 	 * {@link ForkRunner} invokes this method on creation time when the
 	 * fork process is starting.
+	 * @param loggingEnabled 
 	 * 
 	 * @throws IOException
 	 */
-	public void init() throws IOException;
+	public void init(boolean loggingEnabled) throws IOException;
 }

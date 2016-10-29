@@ -65,8 +65,11 @@ public abstract class CallableTask extends LinkableAdapter implements Runnable {
 	 * Creates and starts the call listener.
 	 */
 	@Override
-	public final void init() throws IOException {
-		super.init();
+	public final void init(boolean isLoggingEnabled) throws IOException {
+		super.init(isLoggingEnabled);
+		if (!isLoggingEnabled) {
+			log.setLevel(Level.OFF);
+		}
 		this.predReadStream = super.predReadStream;
 		this.predWriteStream = super.predWriteStream;
 		
