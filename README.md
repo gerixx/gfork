@@ -28,7 +28,7 @@ The fork process ends when the `MyTask` method `run` finishes.
 
 Term _fork_ is borrowed from fork processes on Unix systems. In Java 6 are Unix like forks not possible. The upcoming release of Java 7 (end of year 2010) will support a Fork/Join mechanism, which seems to come very close to real forks, but also with some restrictions, see below Java 7 Fork/Join Extension. The intention of this package is to provide something similar by using Java sub processes. The created process that executes a task in a Java `Fork` inherits the environment of the parent VM process per default, including class path and system properties. The API gives as much as possible freedom in implementing the task that should be executed in the subprocess, furthermore the final state of the task object is propagated back to the parent process. 
 
-Conditions for task execution:
+Requirements for task execution:
 
  * Task object implements interface `Serializable`.
  * Task object implements a public startup method. If this method has a return value and/or arguments they need also to implement interface `Serializable`.
