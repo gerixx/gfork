@@ -20,47 +20,55 @@
 
 package org.gfork.internal;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
+import java.util.Map.Entry;
 import java.util.Properties;
 import java.util.Set;
 import java.util.TimeZone;
-import java.util.Map.Entry;
 
 import org.gfork.Fork;
 import org.junit.BeforeClass;
 import org.junit.Test;
 
-
 public class SysPropTaskTest {
 
 	@BeforeClass
 	public static void staticSetUp() {
-		Fork.setJvmOptionsForAll(new String[]{});
+		Fork.setJvmOptionsForAll(new String[] {});
 	}
-	
+
 	@Test
 	public void testSubProcessSystemProperties() throws Exception {
-		Fork<SysPropTask, Properties> f = new Fork<SysPropTask, Properties>(
-				new SysPropTask(),
-				SysPropTask.getSystemPropertiesMethod()
-			);
-		f.execute();
-		Properties remoteSystemProperties = f.getReturnValue();
+		Fork<SysPropTask, Properties> fork = new Fork<SysPropTask, Properties>(new SysPropTask(),
+				SysPropTask.getSystemPropertiesMethod());
+		fork.execute();
+		Properties remoteSystemProperties = fork.getReturnValue();
 		Properties localSystemProperties = System.getProperties();
 		assertEquals(localSystemProperties.size(), remoteSystemProperties.size());
 		Set<Entry<Object, Object>> lProps = localSystemProperties.entrySet();
 		for (Entry<Object, Object> lProp : lProps) {
 			Object remotePropValue = remoteSystemProperties.get(lProp.getKey());
 			Object localPropValue = lProp.getValue();
+			System.out.println("key=" + lProp.getKey());
 			if (lProp.getKey().equals("user.timezone")) {
-				TimeZone localTimeZone = TimeZone.getTimeZone((String) localPropValue);
-				TimeZone remoteTimeZone = TimeZone.getTimeZone((String) remotePropValue);
-				assertEquals("key=" + lProp.getKey(), localTimeZone, remoteTimeZone);
+				TimeZone localTimeZone = createTimeZone(localPropValue);
+				TimeZone remoteTimeZone = createTimeZone(remotePropValue);
+				assertEquals("key=" + lProp.getKey(), localTimeZone.toString(), remoteTimeZone.toString());
+			} else if (lProp.getKey().equals("sun.java.command")) {
+				System.out.println("ignored property 'sun.java.command'");
 			} else {
 				assertEquals("key=" + lProp.getKey(), localPropValue, remotePropValue);
 			}
 		}
 	}
+
+	private TimeZone createTimeZone(Object timeZone) {
+		String timeZoneId = (String) timeZone;
+		if (timeZoneId == null || timeZoneId.trim().isEmpty()) {
+			return TimeZone.getDefault();
+		} else {
+			return TimeZone.getTimeZone(timeZoneId);
+		}
+	}
 }
-	
