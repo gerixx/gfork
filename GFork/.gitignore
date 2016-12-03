@@ -1,2 +1,5 @@
 /bin/
 /bin-test/
+/tmp/
+/deploy/
+/*.zip
