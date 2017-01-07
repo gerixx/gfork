@@ -41,6 +41,7 @@ import java.util.Set;
 
 import org.gfork.helpers.ForkListenerAdapter;
 import org.gfork.internal.SysPropTask;
+import org.gfork.internal.remote.client.ForkClient;
 import org.gfork.internal.run.ForkRunner;
 import org.gfork.types.MethodArgumentsException;
 
@@ -60,9 +61,10 @@ import org.gfork.types.MethodArgumentsException;
  *            the remote JVM
  */
 public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializable> implements Serializable {
-	protected static final String FORK_WAS_NOT_STARTED_YET = "Fork was not started yet.";
 
-	protected static final String FORK_IS_ALREADY_EXECUTING = "Task process is already executing.";
+	public static final String FORK_WAS_NOT_STARTED_YET = "Fork was not started yet.";
+
+	public static final String FORK_IS_ALREADY_EXECUTING = "Task process is already executing.";
 
 	public static final long serialVersionUID = 1L;
 
@@ -141,6 +143,10 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	private boolean processListenersInitiated;
 
 	private String classpath;
+
+	private TASK_TYPE task;
+
+	private ForkClient client;
 
 	/**
 	 * Fork listener interface to be implemented to handle events.
@@ -221,6 +227,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	public Fork(final TASK_TYPE task, final Method method, final Serializable... args)
 			throws IOException, MethodArgumentsException {
 		this(true, method, args);
+		this.task = task;
 		checkMethodArgs(method, args);
 		checkReturnType(method);
 		createTaskFile(task);
@@ -357,12 +364,23 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 		readStdOut();
 	}
 
+	public synchronized void execute(String host) throws Exception {
+		if (isExecuting()) {
+			throw new IllegalStateException(FORK_IS_ALREADY_EXECUTING);
+		}
+		client = ForkClient.connect(host);
+		client.run(task.getClass().getName());
+	}
+
 	/**
 	 * Indicates if the fork process is already or still running.
 	 * 
 	 * @return true if fork process is running
 	 */
 	public boolean isExecuting() {
+		if (client != null) {
+			return true;
+		}
 		if (exec == null) {
 			return false;
 		}
@@ -386,6 +404,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 *             {@link #execute()} at first
 	 */
 	public synchronized int waitFor() throws InterruptedException, IllegalAccessException {
+		if (client != null) {
+			client.waitFor();
+		}
 		synchronized (waitForSignal) {
 			processListenersInitiated = true;
 		}
