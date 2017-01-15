@@ -49,6 +49,7 @@ import org.gfork.types.Void;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.BeforeClass;
+import org.junit.Ignore;
 import org.junit.Test;
 
 public class ForkTestRemote {
@@ -90,7 +91,7 @@ public class ForkTestRemote {
 
 	@SuppressWarnings("rawtypes")
 	@Test
-	public void testGenericFork() throws Exception {
+	public void testCreateForkByReflection() throws Exception {
 		Constructor<Fork> constructor1 = Fork.class.getConstructor(Serializable.class);
 		Task01 task = new Task01();
 		assertNull(task.getState());
@@ -125,19 +126,7 @@ public class ForkTestRemote {
 		assertEquals("executed", f.getTask().getState());
 	}
 
-	@Test
-	public void testGetTask() throws Exception {
-		System.out.println("ForkTest.testGetTask()");
-		Fork<Task01, Void> f = new Fork<Task01, Void>(new Task01());
-
-		System.getProperties().list(System.out);
-
-		f.execute();
-
-		assertFalse(f.isError());
-		assertEquals("executed", f.getTask().getState());
-	}
-
+	@Ignore
 	@Test
 	public void testSimpleMethod() throws Exception {
 		System.out.println("ForkTest.testSimpleMethod()");
@@ -153,6 +142,7 @@ public class ForkTestRemote {
 		assertFalse(f.isError());
 	}
 
+	@Ignore
 	@Test
 	public void testMethodWithArgsAndReturnValue() throws Exception {
 		System.out.println("ForkTest.testMethodWithArgsAndReturnValue()");
@@ -170,6 +160,7 @@ public class ForkTestRemote {
 		assertFalse(f.isError());
 	}
 
+	@Ignore
 	@Test
 	public void testMethodWithPrimitiveArgOverload01() throws Exception {
 		System.out.println("ForkTest.testMethodWithPrimitiveArgOverload01()");
@@ -182,6 +173,7 @@ public class ForkTestRemote {
 		assertEquals("getValue(Integer) - ok", f.getReturnValue());
 	}
 
+	@Ignore
 	@Test
 	public void testMethodWithPrimitiveArgOverload02() throws Exception {
 		System.out.println("ForkTest.testMethodWithPrimitiveArgOverload02()");
@@ -194,6 +186,7 @@ public class ForkTestRemote {
 		assertEquals("getValue(int) - ok", f.getReturnValue());
 	}
 
+	@Ignore
 	@Test
 	public void testMethodPrimitiveArgs() throws Exception {
 		System.out.println("ForkTest.testMethodPrimitiveArgs()");
@@ -232,6 +225,7 @@ public class ForkTestRemote {
 		assertTestPrimitiveArgs(f);
 	}
 
+	@Ignore
 	@Test
 	public void testMethodWithNullReturnValue() throws Exception {
 		System.out.println("ForkTest.testMethodWithNullReturnValue()");
@@ -242,6 +236,7 @@ public class ForkTestRemote {
 		assertNull(f.getReturnValue());
 	}
 
+	@Ignore
 	@Test
 	public void testKillFork() throws Exception {
 		System.out.println("ForkTest.testTerminate()");
@@ -274,6 +269,7 @@ public class ForkTestRemote {
 		assertTrue(f3.isFinished());
 	}
 
+	@Ignore
 	@Test
 	public void testKillForkNotify() throws Exception {
 		System.out.println("ForkTest.testKillForkNotify()");
@@ -309,6 +305,7 @@ public class ForkTestRemote {
 		System.out.println(f1.isException());
 	}
 
+	@Ignore
 	@Test
 	public void testTaskException() throws Exception {
 		Fork<Task02, Void> f = new Fork<Task02, Void>(new Task02(), Task02.class.getMethod("exception"));
@@ -318,6 +315,7 @@ public class ForkTestRemote {
 		assertEquals("test exception", f.getException().getMessage());
 	}
 
+	@Ignore
 	@Test
 	public void testJvmOptions() throws Exception {
 		System.out.println("ForkTest.testJvmOptions()");
@@ -330,6 +328,7 @@ public class ForkTestRemote {
 		assertTrue(f.getReturnValue()); // try multiple calls
 	}
 
+	@Ignore
 	@Test
 	public void testSystemProperties() throws Exception {
 		System.out.println("ForkTest.testSystemProperties()");
@@ -359,6 +358,7 @@ public class ForkTestRemote {
 		assertTrue(f.getReturnValue());
 	}
 
+	@Ignore
 	@Test
 	public void testStdOutFile() throws Exception {
 		System.out.println("ForkTest.testStdOutFile()");
@@ -376,6 +376,7 @@ public class ForkTestRemote {
 		assertTrue("stdout size: " + stdout.length(), stdout.length() > 500);
 	}
 
+	@Ignore
 	@Test
 	public void testWorkingDir() throws Exception {
 		System.out.println("ForkTest.testWorkingDir()");
@@ -387,6 +388,7 @@ public class ForkTestRemote {
 		assertEquals(new File(getTempFolder()), new File(f.getReturnValue()));
 	}
 
+	@Ignore
 	@Test
 	public void testNotifyWithAnonymous() throws Exception {
 		System.out.println("ForkTest.testNotifyWithAnonymous()");
@@ -427,6 +429,7 @@ public class ForkTestRemote {
 		assertEquals("ok", result);
 	}
 
+	@Ignore
 	@Test
 	public void testNotifyErrorWithAdapter() throws Exception {
 		System.out.println("ForkTest.testNotifyErrorWithAdapter()");
@@ -450,6 +453,7 @@ public class ForkTestRemote {
 		assertEquals("java.lang.RuntimeException: test exception", f.getStdErr().substring(0, 42));
 	}
 
+	@Ignore
 	@Test
 	public void testNotifyExceptionWithAdapter() throws Exception {
 		System.out.println("ForkTest.testNotifyExceptionWithAdapter()");
@@ -484,6 +488,7 @@ public class ForkTestRemote {
 		assertEquals(ForkRunner.EXIT_CODE_ON_EXCEPTION, errorCode);
 	}
 
+	@Ignore
 	@Test
 	public void testTaskFinishedStatus() throws Exception {
 		Fork<Task02, String> f = new Fork<Task02, String>(new Task02(), Task02.class.getMethod("delay", int.class),
@@ -513,6 +518,7 @@ public class ForkTestRemote {
 		assertTrue(onFinished);
 	}
 
+	@Ignore
 	@Test
 	public void testTaskFinishedPolling() throws Exception {
 		int delay = 2000;
@@ -535,6 +541,7 @@ public class ForkTestRemote {
 		assertTrue(finished);
 	}
 
+	@Ignore
 	@Test
 	public void printTaskEnv() throws Exception {
 		System.out.println("ForkTest.printTaskEnv()");
@@ -545,6 +552,7 @@ public class ForkTestRemote {
 		f.waitFor();
 	}
 
+	@Ignore
 	@Test(expected = MethodArgumentsException.class)
 	public void negativeMethodButInvalidArgs() throws Exception {
 		System.out.println("ForkTest.negativeMethodButInvalidArgs()");
@@ -553,6 +561,7 @@ public class ForkTestRemote {
 		f.execute();
 	}
 
+	@Ignore
 	@Test(expected = IllegalAccessException.class)
 	public void negativeMethodWithReturnTypeVoid() throws Exception {
 		System.out.println("ForkTest.negativeMethodWithReturnTypeVoid()");
@@ -563,6 +572,7 @@ public class ForkTestRemote {
 		f.getReturnValue();
 	}
 
+	@Ignore
 	@Test(expected = NoSuchMethodException.class)
 	public void negativeUnknownMethod() throws Exception {
 		System.out.println("ForkTest.negativeUnknownMethod()");
@@ -571,6 +581,7 @@ public class ForkTestRemote {
 		f.execute();
 	}
 
+	@Ignore
 	@Test(expected = NoSuchMethodException.class)
 	public void negativeInvalidMethodArgs() throws Exception {
 		System.out.println("ForkTest.negativeInvalidMethodArgs()");
@@ -580,6 +591,7 @@ public class ForkTestRemote {
 		f.execute();
 	}
 
+	@Ignore
 	@Test(expected = ClassCastException.class)
 	public void negativeReturnTypeMismatch() throws Exception {
 		System.out.println("ForkTest.negativeReturnTypeMismatch()");
@@ -592,6 +604,7 @@ public class ForkTestRemote {
 		System.out.println(value);
 	}
 
+	@Ignore
 	@Test(expected = IllegalStateException.class)
 	public void negativeStdOutFile() throws Exception {
 		System.out.println("ForkTest.negativeStdOutFile()");
