@@ -1,16 +1,23 @@
 package org.gfork.internal.remote.client;
 
-import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.Serializable;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-import org.gfork.Fork;
 import org.gfork.internal.remote.Command;
 import org.gfork.internal.remote.Connection;
+import org.gfork.internal.remote.ReplyData;
+import org.gfork.remote.TimeoutException;
 import org.gfork.remote.server.ForkServer;
 
 /**
@@ -24,6 +31,8 @@ import org.gfork.remote.server.ForkServer;
  */
 public class ForkClient {
 
+	private static final Logger LOG = Logger.getLogger(ForkClient.class.getName());
+
 	private int port = ForkServer.DEFAULT_PORT;
 
 	private InetSocketAddress serverAddress;
@@ -32,7 +41,11 @@ public class ForkClient {
 
 	private Connection con;
 
-	private boolean isRunning;
+	private String className;
+
+	private Integer statusCode;
+
+	private Object taskChanged;
 
 	public static ForkClient connect(String host) throws Exception {
 		ForkClient forkClient = new ForkClient(host);
@@ -56,26 +69,54 @@ public class ForkClient {
 		return new InetSocketAddress(host, port);
 	}
 
-	protected void connect() throws Exception {
+	private void connect() throws Exception {
 		con = new Connection(serverAddress, UUID.randomUUID().toString());
 		handShake();
 	}
 
-	public void run(String className) throws IOException {
-		if (isRunning) {
-			throw new IllegalStateException(Fork.FORK_IS_ALREADY_EXECUTING);
-		}
-		con.socketControlWriter.println(className);
-		con.socketControlWriter.println(Command.run);
-		isRunning = true;
+	public void run(Serializable task) throws Exception {
+		this.className = task.getClass().getName();
+		con.getSocketControlWriter().println(Command.run);
+		writeObject(task, con.getSocketData().getOutputStream());
+		checkReply(Command.runOk, "Remote run of class '" + className + "' failed.");
 	}
 
-	public void waitFor() {
-		if (!isRunning) {
-			throw new IllegalStateException(Fork.FORK_WAS_NOT_STARTED_YET);
+	public int waitFor() {
+		if (statusCode == null) {
+			try {
+				con.getSocketControlWriter().println(Command.waitFor);
+				checkReply(Command.waitForFinished, "Remote waitFor failed.");
+			} catch (Exception e) {
+				String serverError = ForkServer.readReplyControl(con);
+				LOG.log(Level.SEVERE, "Error waitFor class '" + className + "', server error: " + serverError, e);
+				throw new RuntimeException(e);
+			}
+			statusCode = Integer.parseInt(readPropertyFromContorl("statusCode"));
 		}
-		// con.socketControlWriter.println(Command.waitFor);
-		// con.socketControlScanner.nextLine();
+		return statusCode;
+	}
+
+	public Object getTask() {
+		if (statusCode == null) {
+			throw new IllegalStateException("waitFor was not called");
+		}
+		if (taskChanged == null) {
+			try {
+				con.getSocketControlWriter().println(Command.getTask);
+				taskChanged = readObject(con.getSocketData().getInputStream());
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
+		}
+		return taskChanged;
+	}
+
+	private String readPropertyFromContorl(String name) {
+		String nameValuePair = ForkServer.readReplyControl(con);
+		String[] nameValueArray = nameValuePair.split("=");
+		assert nameValueArray.length == 2;
+		assert nameValueArray[0].equals(name);
+		return nameValueArray[1];
 	}
 
 	public void close() {
@@ -83,24 +124,42 @@ public class ForkClient {
 	}
 
 	private void handShake() throws Exception {
-		con.socketControlWriter.println(Command.connect);
-		con.socketControlWriter.println(con.id);
+		con.getSocketControlWriter().println(Command.connect.toString());
+		con.getSocketControlWriter().println(con.getId());
 
-		try (Socket dataSocket = new Socket(InetAddress.getLocalHost(), ForkServer.DEFAULT_PORT)) {
-			dataSocket.getOutputStream().write(con.id.getBytes());
-			dataSocket.getOutputStream().flush();
-		}
+		Socket socketData = new Socket(InetAddress.getLocalHost(), ForkServer.DEFAULT_PORT);
+		socketData.getOutputStream().write(con.getId().getBytes());
+		socketData.getOutputStream().flush();
+		con.setSocketData(socketData);
 
-		String connectReply = con.socketControlScanner.nextLine();
-		checkToken("ID response of server", con.id, connectReply);
-		connectReply = con.socketControlScanner.nextLine();
-		checkToken("ID response of server", Command.connectOK.toString(), connectReply);
+		checkReply(con.getId(), "Invalid ID response of server.");
+		checkReply(Command.connectOk, "Invalid command reply of server.");
 	}
 
-	public static void checkToken(String token, String idExpected, String idGot) {
-		if (!idExpected.equals(idGot)) {
-			throw new RuntimeException("Invalid " + token + ": expected=" + idExpected + ", got=" + idGot);
+	private void checkReply(String token, String msg) throws Exception {
+		ReplyData runReply = ForkServer.readReplyControl(token, con);
+		if (runReply.isTimedOut()) {
+			throw new TimeoutException("Timeout: " + msg + " Expected reply '" + token + "'");
+		}
+		if (!runReply.isExpectedToken()) {
+			throw new IllegalStateException(
+					msg + " Expected reply '" + token + "', got '" + runReply.getReplyToken() + "'");
 		}
 	}
 
+	// TODO msg as lambda for better performance
+	private void checkReply(Command cmd, String msg) throws Exception {
+		checkReply(cmd.toString(), msg);
+	}
+
+	public static void writeObject(Serializable obj, OutputStream outputStream) throws Exception {
+		ObjectOutputStream objOut = new ObjectOutputStream(outputStream);
+		objOut.writeObject(obj);
+		objOut.flush();
+	}
+
+	public static Serializable readObject(InputStream inputStream) throws Exception {
+		ObjectInputStream objIn = new ObjectInputStream(inputStream);
+		return (Serializable) objIn.readObject();
+	}
 }

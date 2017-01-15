@@ -23,18 +23,18 @@ public class ForkServerTest {
 
 		Socket socket = new Socket(InetAddress.getLocalHost(), ForkServer.DEFAULT_PORT);
 		Connection con = new Connection(socket, "id-1");
-		con.socketControlWriter.println(Command.connect);
-		con.socketControlWriter.println("id-1");
+		con.getSocketControlWriter().println(Command.connect);
+		con.getSocketControlWriter().println("id-1");
 
 		try (Socket dataSocket = new Socket(InetAddress.getLocalHost(), ForkServer.DEFAULT_PORT)) {
 			dataSocket.getOutputStream().write("id-1".getBytes());
 			dataSocket.getOutputStream().flush();
 		}
 
-		String connectReply = con.socketControlScanner.nextLine();
+		String connectReply = con.getSocketControlScanner().nextLine();
 		assertEquals("id-1", connectReply);
-		connectReply = con.socketControlScanner.nextLine();
-		assertEquals(Command.connectOK.toString(), connectReply);
+		connectReply = con.getSocketControlScanner().nextLine();
+		assertEquals(Command.connectOk.toString(), connectReply);
 	}
 
 	public static void startLocalDefaultForkServer() {

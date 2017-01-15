@@ -369,7 +369,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 			throw new IllegalStateException(FORK_IS_ALREADY_EXECUTING);
 		}
 		client = ForkClient.connect(host);
-		client.run(task.getClass().getName());
+		client.run(task);
 	}
 
 	/**
@@ -405,7 +405,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 */
 	public synchronized int waitFor() throws InterruptedException, IllegalAccessException {
 		if (client != null) {
-			client.waitFor();
+			return client.waitFor();
 		}
 		synchronized (waitForSignal) {
 			processListenersInitiated = true;
@@ -673,6 +673,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	public TASK_TYPE getTask()
 			throws InterruptedException, IOException, ClassNotFoundException, IllegalAccessException {
 		waitFor();
+		if (client != null) {
+			return (TASK_TYPE) client.getTask();
+		}
 		if (taskResult == null) {
 			final FileInputStream fin = new FileInputStream(taskFile);
 			final ObjectInputStream oin = new ObjectInputStream(fin);

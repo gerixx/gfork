@@ -8,12 +8,18 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.gfork.internal.remote.Command;
 import org.gfork.internal.remote.Connection;
 import org.gfork.internal.remote.ReplyData;
+import org.gfork.internal.remote.server.ForkServerConnectionProcessor;
 
 public class ForkServer {
 
@@ -21,7 +27,7 @@ public class ForkServer {
 
 	private static int MAX_FORKS_RUNNING = 5;
 
-	private static final int SOCKET_READ_TIMEOUT = 9000;
+	private static final int SOCKET_READ_TIMEOU_IN_MILLIS = 9000;
 
 	private static final String JAVA_UTIL_LOGGING_SIMPLE_FORMATTER_FORMAT = "java.util.logging.SimpleFormatter.format";
 
@@ -32,7 +38,7 @@ public class ForkServer {
 	private static Map<String, Object> options = new HashMap<>();
 	private static boolean stop;
 	private static ServerSocket serverSocket;
-	private static Map<String, Connection> connections = new HashMap<>();
+	private static Map<String, ForkServerConnectionProcessor> connections = new HashMap<>();
 
 	static {
 		if (null == System.getProperty(JAVA_UTIL_LOGGING_SIMPLE_FORMATTER_FORMAT)) {
@@ -73,20 +79,22 @@ public class ForkServer {
 					return;
 				}
 
-				LOG.info("wait for data connect for connection ID '" + con.id + "' ...");
-				con.socketData = serverSocket.accept();
-				ReplyData dataReply = ForkServer.readReply(con.id, con.socketData.getInputStream());
+				LOG.info("wait for data connect for connection ID '" + con.getId() + "' ...");
+				con.setSocketData(serverSocket.accept());
+				ReplyData dataReply = ForkServer.readReply(con.getId(), con.getSocketData().getInputStream());
 				if (!dataReply.isExpectedToken()) {
-					final String msg = "ERROR: invalid data connection, expected ID '" + con.id + "', got '"
+					final String msg = "ERROR: invalid data connection, expected ID '" + con.getId() + "', got '"
 							+ dataReply.getReplyToken() + "'" + (dataReply.isTimedOut() ? ", read timed out" : "")
 							+ ", handshake aborted.";
 					LOG.severe(msg);
 					con.replyMsgAndClose(msg);
 				} else {
-					LOG.info("successfully created connection for ID '" + con.id + "'");
-					connections.put(con.id, con);
-					con.socketControlWriter.println(con.id);
-					con.socketControlWriter.println(Command.connectOK);
+					LOG.info("successfully created connection for ID '" + con.getId() + "'");
+					con.getSocketControlWriter().println(con.getId());
+					con.getSocketControlWriter().println(Command.connectOk);
+					ForkServerConnectionProcessor processor = new ForkServerConnectionProcessor(con);
+					processor.start();
+					connections.put(con.getId(), processor);
 				}
 			} else {
 				String errorMsg = "ERROR: invalid connect";
@@ -104,9 +112,9 @@ public class ForkServer {
 	}
 
 	// private static void readID(Connection con) throws IOException {
-	// byte[] idBytes = new byte[con.ID.getBytes().length];
-	// con.socketData.getInputStream().read(idBytes, 0,
-	// con.ID.getBytes().length);
+	// byte[] idBytes = new byte[con.getId().getBytes().length];
+	// con.getSocketData().getInputStream().read(idBytes, 0,
+	// con.getId().getBytes().length);
 	// }
 
 	private static ReplyData readReply(Command cmd, InputStream inputStream) throws Exception {
@@ -117,7 +125,7 @@ public class ForkServer {
 		int toread = token.getBytes().length;
 		byte[] buff = new byte[toread];
 		int len = 0, red = 0;
-		long endTime = SOCKET_READ_TIMEOUT + System.currentTimeMillis();
+		long endTime = SOCKET_READ_TIMEOU_IN_MILLIS + System.currentTimeMillis();
 		boolean isTimedOut = false;
 		do {
 			if (inputStream.available() == 0) {
@@ -133,6 +141,44 @@ public class ForkServer {
 		} else {
 			String replyToken = new String(buff);
 			return new ReplyData(token.equals(replyToken), false, replyToken);
+		}
+	}
+
+	public static ReplyData readReplyControl(Command cmd, Connection con) throws Exception {
+		return readReplyControl(cmd.toString(), con);
+	}
+
+	public static ReplyData readReplyControl(String token, Connection con) throws Exception {
+		return readReplyControl(token, con, SOCKET_READ_TIMEOU_IN_MILLIS);
+	}
+
+	public static ReplyData readReplyControl(String token, Connection con, int timeoutMs) throws Exception {
+		try {
+			FutureTask<String> readNextLine = new FutureTask<String>(() -> {
+				return con.getSocketControlScanner().nextLine();
+			});
+			ExecutorService executor = Executors.newFixedThreadPool(1);
+			executor.execute(readNextLine);
+			String replyToken = (timeoutMs > 0 ? readNextLine.get(timeoutMs, TimeUnit.MILLISECONDS)
+					: readNextLine.get());
+			return new ReplyData(token.equals(replyToken), false, replyToken);
+		} catch (TimeoutException e) {
+			LOG.warning(() -> "reading from control scanner timed out");
+			return new ReplyData(false, true, null);
+		}
+	}
+
+	public static String readReplyControl(Connection con) {
+		try {
+			FutureTask<String> readNextLine = new FutureTask<String>(() -> {
+				return con.getSocketControlScanner().nextLine();
+			});
+			ExecutorService executor = Executors.newFixedThreadPool(1);
+			executor.execute(readNextLine);
+			return readNextLine.get(SOCKET_READ_TIMEOU_IN_MILLIS, TimeUnit.MILLISECONDS);
+		} catch (Exception e) {
+			LOG.log(Level.FINE, "control scanner read error", e);
+			return null;
 		}
 	}
 

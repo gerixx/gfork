@@ -1,5 +1,5 @@
 package org.gfork.internal.remote;
 
 public enum Command {
-	connect, connectOK, run, runFinished, waitFor
+	NAC, connect, connectOk, run, runOk, waitFor, waitForFinished, waitForError, getTask
 }
