@@ -34,16 +34,22 @@ public class ForkServerConnectionProcessor extends Thread {
 			Command nextCommand = readNextCommand();
 			switch (nextCommand) {
 			case run:
-				LOG.info("Run Fork");
 				runFork();
 				break;
 			case waitFor:
-				LOG.info(getLogContext() + " - wait for");
 				waitForFork();
 				break;
 			case getTask:
-				LOG.info(getLogContext() + " - get task");
-				getTaskChanged();
+				getTask();
+				break;
+			case getStdErr:
+				getStdErr();
+				break;
+			case getStdOut:
+				getStdOut();
+				break;
+			case getExitValue:
+				getExitValue();
 				break;
 			case NAC:
 				break; // ignore
@@ -72,6 +78,7 @@ public class ForkServerConnectionProcessor extends Thread {
 	@SuppressWarnings("rawtypes")
 	private void runFork() {
 		try {
+			LOG.info("Run Fork");
 			Serializable task = ForkClient.readObject(con.getSocketData().getInputStream());
 			className = task.getClass().getName();
 			LOG.info(getLogContext() + " - run '" + className + "'");
@@ -87,6 +94,7 @@ public class ForkServerConnectionProcessor extends Thread {
 
 	private void waitForFork() {
 		try {
+			LOG.info(getLogContext() + " - wait for");
 			int statusCode = fork.waitFor();
 			this.con.getSocketControlWriter().println(Command.waitForFinished);
 			this.con.getSocketControlWriter().println("statusCode=" + statusCode);
@@ -98,9 +106,34 @@ public class ForkServerConnectionProcessor extends Thread {
 		}
 	}
 
-	private void getTaskChanged() {
+	private void getTask() {
 		try {
+			LOG.info(getLogContext() + " - get task");
 			ForkClient.writeObject(fork.getTask(), con.getSocketData().getOutputStream());
+		} catch (Exception e) {
+			LOG.log(Level.SEVERE, getLogContext(), e);
+		}
+	}
+
+	private void getStdErr() {
+		try {
+			ForkClient.writeObject(fork.getStdErr(), con.getSocketData().getOutputStream());
+		} catch (Exception e) {
+			LOG.log(Level.SEVERE, getLogContext(), e);
+		}
+	}
+	
+	private void getStdOut() {
+		try {
+			ForkClient.writeObject(fork.getStdOut(), con.getSocketData().getOutputStream());
+		} catch (Exception e) {
+			LOG.log(Level.SEVERE, getLogContext(), e);
+		}
+	}
+
+	private void getExitValue() {
+		try {
+			ForkClient.writeObject(fork.getExitValue(), con.getSocketData().getOutputStream());
 		} catch (Exception e) {
 			LOG.log(Level.SEVERE, getLogContext(), e);
 		}

@@ -162,4 +162,31 @@ public class ForkClient {
 		ObjectInputStream objIn = new ObjectInputStream(inputStream);
 		return (Serializable) objIn.readObject();
 	}
+
+	public String getStdErr() {
+		try {
+			con.getSocketControlWriter().println(Command.getStdErr);
+			return (String)readObject(con.getSocketData().getInputStream());
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public String getStdOut() {
+		try {
+			con.getSocketControlWriter().println(Command.getStdOut);
+			return (String)readObject(con.getSocketData().getInputStream());
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public int getExitValue() {
+		try {
+			con.getSocketControlWriter().println(Command.getExitValue);
+			return (Integer)readObject(con.getSocketData().getInputStream());
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
 }

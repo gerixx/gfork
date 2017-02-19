@@ -30,7 +30,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.Serializable;
-import java.lang.reflect.Constructor;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
@@ -78,8 +77,7 @@ public class ForkTestRemote {
 	@Before
 	public void init() {
 		ForkServerTest.startLocalDefaultForkServer();
-		// configure logging before every test because some of the tests disable
-		// it
+		// configure logging before every test because some of the tests disable it
 		Fork.setLoggingEnabled(true);
 		Fork.setJvmOptionsForAll(new String[] { "-Djava.util.logging.config.file=./logging_forkRunner.properties", });
 	}
@@ -87,26 +85,6 @@ public class ForkTestRemote {
 	@After
 	public void endTest() throws Exception {
 		ForkServer.stop();
-	}
-
-	@SuppressWarnings("rawtypes")
-	@Test
-	public void testCreateForkByReflection() throws Exception {
-		Constructor<Fork> constructor1 = Fork.class.getConstructor(Serializable.class);
-		Task01 task = new Task01();
-		assertNull(task.getState());
-
-		Fork f = constructor1.newInstance(task);
-		f.execute();
-		f.waitFor();
-		System.out.printf("std err: '%s'%n", f.getStdErr());
-		System.out.printf("std out: '%s'&n", f.getStdOut());
-
-		assertFalse(f.isError());
-		assertEquals("Task01.run()" + Fork.NL, f.getStdOut());
-		assertFalse(f.isError());
-		Task01 taskAfterRun = (Task01) f.getTask();
-		assertEquals("executed", taskAfterRun.getState());
 	}
 
 	@Test
@@ -117,12 +95,12 @@ public class ForkTestRemote {
 
 		int status = f.waitFor();
 		assertEquals(0, status);
-		// System.out.printf("std err: '%s'%n", f.getStdErr());
-		// System.out.printf("std out: '%s'&n", f.getStdOut());
-		//
-		// assertFalse(f.isError());
-		// assertEquals("Task01.run()" + Fork.NL, f.getStdOut());
-		// assertFalse(f.isError());
+		System.out.printf("std err: '%s'%n", f.getStdErr());
+		System.out.printf("std out: '%s'&n", f.getStdOut());
+		
+		assertFalse(f.isError());
+		assertEquals("Task01.run()" + Fork.NL, f.getStdOut());
+		assertFalse(f.isError());
 		assertEquals("executed", f.getTask().getState());
 	}
 

@@ -509,6 +509,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 * @throws IllegalAccessException
 	 */
 	public boolean isError() throws InterruptedException, IllegalThreadStateException, IllegalAccessException {
+		if (client != null) {
+			return client.getExitValue() != 0;
+		}
 		return (getExitValue() != 0);
 	}
 
@@ -568,6 +571,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 * @throws IllegalAccessException
 	 */
 	public String getStdErr() throws InterruptedException, IllegalAccessException {
+		if (client != null) {
+			return client.getStdErr();
+		}
 		return stdErrText.toString();
 	}
 
@@ -606,6 +612,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 * @throws IllegalAccessException
 	 */
 	public String getStdOut() throws InterruptedException, IllegalAccessException {
+		if (client != null) {
+			return client.getStdOut();
+		}
 		synchronized (stdOutText) {
 			return stdOutText.toString();
 		}
