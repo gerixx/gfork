@@ -5,6 +5,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.OutputStream;
 import java.io.Serializable;
+import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -47,6 +48,10 @@ public class ForkClient {
 
 	private Object taskChanged;
 
+	private Method method;
+
+	private Object[] methodArgs;
+
 	public static ForkClient connect(String host) throws Exception {
 		ForkClient forkClient = new ForkClient(host);
 		forkClient.connect();
@@ -76,8 +81,15 @@ public class ForkClient {
 
 	public void run(Serializable task) throws Exception {
 		this.className = task.getClass().getName();
-		con.getSocketControlWriter().println(Command.run);
-		writeObject(task, con.getSocketData().getOutputStream());
+		if (method == null) {
+			con.getSocketControlWriter().println(Command.run);
+			writeObject(task, con.getSocketData().getOutputStream());
+		} else {
+			con.getSocketControlWriter().println(Command.runMethod);
+			writeObject(task, con.getSocketData().getOutputStream());
+			writeObject(method.getName(), con.getSocketData().getOutputStream());
+			writeObject(methodArgs, con.getSocketData().getOutputStream());
+		}
 		checkReply(Command.runOk, "Remote run of class '" + className + "' failed.");
 	}
 
@@ -188,5 +200,22 @@ public class ForkClient {
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
+	}
+
+	public Serializable getReturnValue() {
+		try {
+			con.getSocketControlWriter().println(Command.getMethodReturnValue);
+			return readObject(con.getSocketData().getInputStream());
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	public void setMethod(Method method) {
+		this.method = method;
+	}
+
+	public void setMethodArgs(Object[] methodArgs) {
+		this.methodArgs = methodArgs;
 	}
 }

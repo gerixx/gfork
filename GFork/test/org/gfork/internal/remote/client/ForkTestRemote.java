@@ -104,18 +104,19 @@ public class ForkTestRemote {
 		assertEquals("executed", f.getTask().getState());
 	}
 
-	@Ignore
 	@Test
 	public void testSimpleMethod() throws Exception {
 		System.out.println("ForkTest.testSimpleMethod()");
 		Date date = new Date();
 		Fork<Task02, Date> f = new Fork<Task02, Date>(new Task02(date), Task02.class.getMethod("getDate"));
 
-		f.execute();
+		f.execute("localhost");
 
 		if (f.isError()) {
 			System.out.print(f.getStdErr());
 		}
+		System.out.println(f.getStdOut());
+		
 		assertEquals(date, f.getReturnValue());
 		assertFalse(f.isError());
 	}

@@ -369,6 +369,8 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 			throw new IllegalStateException(FORK_IS_ALREADY_EXECUTING);
 		}
 		client = ForkClient.connect(host);
+		client.setMethod(method);
+		client.setMethodArgs(methodArgs);
 		client.run(task);
 	}
 
@@ -457,6 +459,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	@SuppressWarnings("unchecked")
 	public RETURN_TYPE getReturnValue() throws IllegalAccessException, InterruptedException {
 		waitFor();
+		if (client != null) {
+			return (RETURN_TYPE) client.getReturnValue();
+		}
 		if (isReturnTypeVoid()) {
 			throw new IllegalAccessException(
 					String.format("Return value type of method '%s' is void.", method.getName()));

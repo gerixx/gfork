@@ -2,6 +2,9 @@ package org.gfork.internal.remote.server;
 
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -36,6 +39,12 @@ public class ForkServerConnectionProcessor extends Thread {
 			case run:
 				runFork();
 				break;
+			case runMethod:
+				runMethodFork();
+				break;
+			case getMethodReturnValue:
+				getMethodReturnValue();
+				break;
 			case waitFor:
 				waitForFork();
 				break;
@@ -65,16 +74,6 @@ public class ForkServerConnectionProcessor extends Thread {
 		}
 	}
 
-	private Command readNextCommand() {
-		nextCommand = con.getSocketControlScanner().nextLine();
-		try {
-			return Command.valueOf(nextCommand);
-		} catch (Exception e) {
-			LOG.log(Level.FINE, () -> getLogContext() + " - invalid command received: '" + nextCommand + "'");
-			return Command.NAC;
-		}
-	}
-
 	@SuppressWarnings("rawtypes")
 	private void runFork() {
 		try {
@@ -89,6 +88,44 @@ public class ForkServerConnectionProcessor extends Thread {
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
+		}
+	}
+
+	private void runMethodFork() {
+		try {
+			LOG.info("Run Method Fork");
+			Serializable task = ForkClient.readObject(con.getSocketData().getInputStream());
+			String methodName = (String) ForkClient.readObject(con.getSocketData().getInputStream());
+			Serializable[] methodArgs = (Serializable[]) ForkClient.readObject(con.getSocketData().getInputStream());
+			className = task.getClass().getName();
+			Class<?>[] parameterTypes = getMethodParameterTypes(methodArgs);
+			Method method = task.getClass().getMethod(methodName, parameterTypes);
+			LOG.info(getLogContext() + " - run '" + className + "." + method.getName() + "'");
+			Constructor<Fork> constructor = Fork.class.getConstructor(Serializable.class, Method.class, Serializable[].class);
+			fork = constructor.newInstance(task, method, methodArgs);
+			fork.execute();
+			this.con.getSocketControlWriter().println(Command.runOk);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	private Class<?>[] getMethodParameterTypes(Serializable[] methodArgs) {
+		List<Class<?>> typeList = new ArrayList<>();
+		for (Serializable serializable : methodArgs) {
+			typeList.add(serializable.getClass());
+		}
+		return typeList.toArray(new Class<?>[typeList.size()]);
+	}
+
+	private Command readNextCommand() {
+		nextCommand = con.getSocketControlScanner().nextLine();
+		try {
+			return Command.valueOf(nextCommand);
+		} catch (Exception e) {
+			LOG.log(Level.FINE, () -> getLogContext() + " - invalid command received: '" + nextCommand + "'");
+			return Command.NAC;
 		}
 	}
 
@@ -134,6 +171,14 @@ public class ForkServerConnectionProcessor extends Thread {
 	private void getExitValue() {
 		try {
 			ForkClient.writeObject(fork.getExitValue(), con.getSocketData().getOutputStream());
+		} catch (Exception e) {
+			LOG.log(Level.SEVERE, getLogContext(), e);
+		}
+	}
+
+	private void getMethodReturnValue() {
+		try {
+			ForkClient.writeObject(fork.getReturnValue(), con.getSocketData().getOutputStream());
 		} catch (Exception e) {
 			LOG.log(Level.SEVERE, getLogContext(), e);
 		}

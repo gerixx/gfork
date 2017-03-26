@@ -24,6 +24,7 @@ public class Task02 implements Serializable {
 	}
 	
 	public Date getDate() {
+		System.out.println("++++++ target method: " + getClass().getSimpleName() + ".getDate()");
 		return date;
 	}
 
