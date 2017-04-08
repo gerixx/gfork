@@ -10,10 +10,12 @@ public class Task01 implements Serializable, Runnable /*only needed together wit
 	private final static Logger log = Logger.getLogger(Task01.class.getName());
 	
 	private String state;
+	private Boolean checkVmOptions = false;
 
 	public void run() {
 		System.out.println("Task01.run()");
 		state = "executed";
+		checkVmOptions();
 	}
 	
 	public boolean checkLibPath(String comparewith) {
@@ -83,5 +85,13 @@ public class Task01 implements Serializable, Runnable /*only needed together wit
 	
 	public boolean set(boolean v) {
 		return true;
+	}
+	
+	public boolean checkVmOptions() {
+		return (checkVmOptions = System.getProperty("test.property.all", "undefined").equals("hello1"));
+	}
+
+	public Boolean getCheckVmOptions() {
+		return checkVmOptions;
 	}
 }

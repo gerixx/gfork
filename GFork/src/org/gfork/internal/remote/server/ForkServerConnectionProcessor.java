@@ -1,10 +1,12 @@
 package org.gfork.internal.remote.server;
 
+import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -26,63 +28,76 @@ public class ForkServerConnectionProcessor extends Thread {
 	@SuppressWarnings("rawtypes")
 	private Fork fork;
 
-	public ForkServerConnectionProcessor(Connection con) {
+	private Map<String, ForkServerConnectionProcessor> connections;
+
+	public ForkServerConnectionProcessor(ConnectionServerSide con) {
 		super();
+		setName("ForkServerConnectionProcessor id=" + con.getId());
 		this.con = con;
 	}
 
 	@Override
 	public void run() {
 		while (!isStop()) {
-			Command nextCommand = readNextCommand();
-			switch (nextCommand) {
-			case run:
-				runFork();
-				break;
-			case runMethod:
-				runMethodFork();
-				break;
-			case getMethodReturnValue:
-				getMethodReturnValue();
-				break;
-			case waitFor:
-				waitForFork();
-				break;
-			case getTask:
-				getTask();
-				break;
-			case getStdErr:
-				getStdErr();
-				break;
-			case getStdOut:
-				getStdOut();
-				break;
-			case getExitValue:
-				getExitValue();
-				break;
-			case NAC:
-				break; // ignore
-			case connect:
-			case connectOk:
-			case runOk:
-			case waitForFinished:
-			case waitForError:
-				throw new RuntimeException("Unexpected command: " + nextCommand);
-			default:
-				break;
+			try {
+				Command nextCommand = readNextCommand();
+				switch (nextCommand) {
+				case run:
+					runFork();
+					break;
+				case kill:
+					killFork();
+					break;
+				case runMethod:
+					runMethodFork();
+					break;
+				case getMethodReturnValue:
+					getMethodReturnValue();
+					break;
+				case waitFor:
+					waitForFork();
+					break;
+				case getTask:
+					getTask();
+					break;
+				case getStdErr:
+					getStdErr();
+					break;
+				case getStdOut:
+					getStdOut();
+					break;
+				case getExitValue:
+					getExitValue();
+					break;
+				case connectClose:
+					connectClose();
+					break;
+				case NAC:
+					break; // ignore
+				default:
+					throw new RuntimeException("Unexpected command: " + nextCommand);
+				}
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			} finally {
+				connections.remove(con.getId());
 			}
 		}
 	}
 
-	@SuppressWarnings("rawtypes")
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void runFork() {
 		try {
 			LOG.info("Run Fork");
 			Serializable task = ForkClient.readObject(con.getSocketData().getInputStream());
+			Fork.setJvmOptionsForAll((List)ForkClient.readObject(con.getSocketData().getInputStream()));
+			List<String> vmOptions = (List)ForkClient.readObject(con.getSocketData().getInputStream());
 			className = task.getClass().getName();
 			LOG.info(getLogContext() + " - run '" + className + "'");
 			Constructor<Fork> constructor1 = Fork.class.getConstructor(Serializable.class);
 			fork = constructor1.newInstance(task);
+			fork.setJvmOptions(vmOptions);
 			fork.execute();
 			this.con.getSocketControlWriter().println(Command.runOk);
 		} catch (Exception e) {
@@ -91,18 +106,34 @@ public class ForkServerConnectionProcessor extends Thread {
 		}
 	}
 
+	private void killFork() {
+		try {
+			LOG.info(getLogContext() + " - kill '" + className + "'");
+			fork.kill();
+			this.con.getSocketControlWriter().println(Command.killOk);
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+
+	@SuppressWarnings({ "unchecked", "rawtypes" })
 	private void runMethodFork() {
 		try {
 			LOG.info("Run Method Fork");
-			Serializable task = ForkClient.readObject(con.getSocketData().getInputStream());
-			String methodName = (String) ForkClient.readObject(con.getSocketData().getInputStream());
-			Serializable[] methodArgs = (Serializable[]) ForkClient.readObject(con.getSocketData().getInputStream());
+			InputStream inputStream = con.getSocketData().getInputStream();
+			Serializable task = ForkClient.readObject(inputStream);
+			Fork.setJvmOptionsForAll((List)ForkClient.readObject(inputStream));
+			List<String> vmOptions = (List)ForkClient.readObject(con.getSocketData().getInputStream());
+			String methodName = (String) ForkClient.readObject(inputStream);
+			Serializable[] methodArgs = (Serializable[]) ForkClient.readObject(inputStream);
 			className = task.getClass().getName();
 			Class<?>[] parameterTypes = getMethodParameterTypes(methodArgs);
 			Method method = task.getClass().getMethod(methodName, parameterTypes);
 			LOG.info(getLogContext() + " - run '" + className + "." + method.getName() + "'");
 			Constructor<Fork> constructor = Fork.class.getConstructor(Serializable.class, Method.class, Serializable[].class);
 			fork = constructor.newInstance(task, method, methodArgs);
+			fork.setJvmOptions(vmOptions);
 			fork.execute();
 			this.con.getSocketControlWriter().println(Command.runOk);
 		} catch (Exception e) {
@@ -140,6 +171,25 @@ public class ForkServerConnectionProcessor extends Thread {
 			LOG.log(Level.SEVERE, getLogContext(), e);
 			this.con.getSocketControlWriter().println(Command.waitForError);
 			this.con.getSocketControlWriter().println(getLogContext() + " - " + e.getMessage());
+		}
+	}
+
+	private void connectClose() {
+		setStop(true);
+		if (fork.isExecuting()) {
+			try {
+				fork.kill();
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}
+		this.con.getSocketControlWriter().println(Command.connectCloseOk);
+		try {
+			con.close();
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
 		}
 	}
 
@@ -184,15 +234,21 @@ public class ForkServerConnectionProcessor extends Thread {
 		}
 	}
 
-	public boolean isStop() {
+	private boolean isStop() {
 		return stop;
 	}
 
-	public void setStop(boolean stop) {
+	private void setStop(boolean stop) {
 		this.stop = stop;
 	}
 
 	private String getLogContext() {
 		return "Run Fork: className = '" + className + "'";
+	}
+
+	public void start(Map<String, ForkServerConnectionProcessor> connections) {					
+		this.connections = connections;
+		connections.put(con.getId(), this);
+		start();
 	}
 }

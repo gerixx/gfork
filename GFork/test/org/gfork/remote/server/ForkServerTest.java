@@ -6,7 +6,7 @@ import java.net.InetAddress;
 import java.net.Socket;
 
 import org.gfork.internal.remote.Command;
-import org.gfork.internal.remote.Connection;
+import org.gfork.internal.remote.client.ConnectionClientSide;
 import org.junit.After;
 import org.junit.Test;
 
@@ -22,7 +22,7 @@ public class ForkServerTest {
 		startLocalDefaultForkServer();
 
 		Socket socket = new Socket(InetAddress.getLocalHost(), ForkServer.DEFAULT_PORT);
-		Connection con = new Connection(socket, "id-1");
+		ConnectionClientSide con = new ConnectionClientSide(socket, "id-1");
 		con.getSocketControlWriter().println(Command.connect);
 		con.getSocketControlWriter().println("id-1");
 
@@ -37,9 +37,10 @@ public class ForkServerTest {
 		assertEquals(Command.connectOk.toString(), connectReply);
 	}
 
-	public static void startLocalDefaultForkServer() {
-		Thread forkServerThread = new Thread("ForkServerTest") {
+	public static Thread startLocalDefaultForkServer() {
+		Thread forkServerThread = new Thread("ForkServerTest server thread") {
 			public void run() {
+				System.out.println("ForkServerTest: server thread starting...");
 				ForkServer.main(new String[] {});
 				System.out.println("ForkServerTest: server thread ended");
 			}
@@ -55,6 +56,7 @@ public class ForkServerTest {
 			}
 		};
 		forkServerThread.start();
+		return forkServerThread;
 	}
 
 }

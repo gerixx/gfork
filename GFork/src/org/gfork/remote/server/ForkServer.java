@@ -1,9 +1,6 @@
 package org.gfork.remote.server;
 
-import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.HashMap;
@@ -19,13 +16,14 @@ import java.util.logging.Logger;
 import org.gfork.internal.remote.Command;
 import org.gfork.internal.remote.Connection;
 import org.gfork.internal.remote.ReplyData;
+import org.gfork.internal.remote.server.ConnectionServerSide;
 import org.gfork.internal.remote.server.ForkServerConnectionProcessor;
 
 public class ForkServer {
 
 	public static int DEFAULT_PORT = 54165;
 
-	private static int MAX_FORKS_RUNNING = 5;
+	public static int MAX_FORKS_RUNNING = 10;
 
 	private static final int SOCKET_READ_TIMEOU_IN_MILLIS = 9000;
 
@@ -69,11 +67,11 @@ public class ForkServer {
 	}
 
 	private static void handleConnect(final Socket socket) throws Exception {
-		Connection con = null;
+		ConnectionServerSide con = null;
 		try {
 			ReplyData acceptReply = ForkServer.readReply(Command.connect, socket.getInputStream());
 			if (acceptReply.isExpectedToken()) {
-				con = new Connection(socket);
+				con = new ConnectionServerSide(socket);
 				if (connections.size() > MAX_FORKS_RUNNING) {
 					con.replyMsgAndClose("ERROR: maximum nuber " + MAX_FORKS_RUNNING + " of forks exceeded.");
 					return;
@@ -93,15 +91,14 @@ public class ForkServer {
 					con.getSocketControlWriter().println(con.getId());
 					con.getSocketControlWriter().println(Command.connectOk);
 					ForkServerConnectionProcessor processor = new ForkServerConnectionProcessor(con);
-					processor.start();
-					connections.put(con.getId(), processor);
+					processor.start(connections);
 				}
 			} else {
 				String errorMsg = "ERROR: invalid connect";
 				LOG.severe(errorMsg);
 				socket.getOutputStream().write(errorMsg.getBytes());
 				socket.getOutputStream().flush();
-				Connection.closeSocket(socket);
+				ConnectionServerSide.closeSocket(socket);
 			}
 		} catch (Exception e) {
 			LOG.log(Level.SEVERE, "handShake", e);
@@ -111,7 +108,7 @@ public class ForkServer {
 		}
 	}
 
-	// private static void readID(Connection con) throws IOException {
+	// private static void readID(ConnectionServerSide con) throws IOException {
 	// byte[] idBytes = new byte[con.getId().getBytes().length];
 	// con.getSocketData().getInputStream().read(idBytes, 0,
 	// con.getId().getBytes().length);
@@ -197,19 +194,6 @@ public class ForkServer {
 			argName = arg;
 		}
 		LOG.info(() -> "listening port = " + options.get(ARG_PORT) + ", can be changed using argument '-port'");
-	}
-
-	private static String readStdInLine(String prompt) {
-		System.out.print(prompt);
-		BufferedReader reader = new BufferedReader(new InputStreamReader(System.in));
-		try {
-			String line = reader.readLine();
-			reader.close();
-			return line;
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-		return "";
 	}
 
 	public static void stop() throws Exception {

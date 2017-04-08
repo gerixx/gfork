@@ -9,6 +9,7 @@ import java.lang.reflect.Method;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -16,7 +17,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.gfork.internal.remote.Command;
-import org.gfork.internal.remote.Connection;
 import org.gfork.internal.remote.ReplyData;
 import org.gfork.remote.TimeoutException;
 import org.gfork.remote.server.ForkServer;
@@ -40,7 +40,7 @@ public class ForkClient {
 
 	private static Map<String, ForkClient> forks = new HashMap<>();
 
-	private Connection con;
+	private ConnectionClientSide con;
 
 	private String className;
 
@@ -51,6 +51,10 @@ public class ForkClient {
 	private Method method;
 
 	private Object[] methodArgs;
+
+	private ArrayList<String> vmOptionsForAll;
+
+	private ArrayList<String> vmOptions;
 
 	public static ForkClient connect(String host) throws Exception {
 		ForkClient forkClient = new ForkClient(host);
@@ -75,7 +79,7 @@ public class ForkClient {
 	}
 
 	private void connect() throws Exception {
-		con = new Connection(serverAddress, UUID.randomUUID().toString());
+		con = new ConnectionClientSide(serverAddress, UUID.randomUUID().toString());
 		handShake();
 	}
 
@@ -84,13 +88,27 @@ public class ForkClient {
 		if (method == null) {
 			con.getSocketControlWriter().println(Command.run);
 			writeObject(task, con.getSocketData().getOutputStream());
+			writeObject(vmOptionsForAll, con.getSocketData().getOutputStream());
+			writeObject(vmOptions, con.getSocketData().getOutputStream());
 		} else {
 			con.getSocketControlWriter().println(Command.runMethod);
 			writeObject(task, con.getSocketData().getOutputStream());
+			writeObject(vmOptionsForAll, con.getSocketData().getOutputStream());
+			writeObject(vmOptions, con.getSocketData().getOutputStream());
 			writeObject(method.getName(), con.getSocketData().getOutputStream());
 			writeObject(methodArgs, con.getSocketData().getOutputStream());
 		}
 		checkReply(Command.runOk, "Remote run of class '" + className + "' failed.");
+	}
+
+	public void kill() {
+		try {
+			con.getSocketControlWriter().println(Command.kill);
+			checkReply(Command.killOk, "Remote kill of class '" + className + "' failed.");
+			close();
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
 	}
 
 	public int waitFor() {
@@ -132,7 +150,14 @@ public class ForkClient {
 	}
 
 	public void close() {
-		con.close();
+		try {
+			con.getSocketControlWriter().println(Command.connectClose);
+			checkReply(Command.connectCloseOk, "Close connection for class '" + className + "' failed.");
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		} finally {
+			con.close();
+		}
 	}
 
 	private void handShake() throws Exception {
@@ -217,5 +242,17 @@ public class ForkClient {
 
 	public void setMethodArgs(Object[] methodArgs) {
 		this.methodArgs = methodArgs;
+	}
+
+	public void setVmOptionsForAll(ArrayList<String> vmOptionsForAll) {
+		this.vmOptionsForAll = vmOptionsForAll;
+	}
+
+	public void setVmOptions(ArrayList<String> vmOptions) {
+		this.vmOptions = vmOptions;
+	}
+
+	public boolean isClosed() {
+		return con.isClosed();
 	}
 }

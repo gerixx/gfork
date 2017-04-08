@@ -6,7 +6,7 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.util.Scanner;
 
-public class Connection {
+public abstract class Connection {
 
 	private Socket socketControl;
 	private Socket socketData;
@@ -14,6 +14,7 @@ public class Connection {
 	private Scanner socketControlScanner;
 	private String id;
 	private ConnectionWriter connectionControlWriter;
+	private boolean isClosed;
 
 	public Connection(Socket socket) throws Exception {
 		handleConnect(socket);
@@ -21,15 +22,15 @@ public class Connection {
 	}
 
 	public Connection(Socket socket, String id) throws Exception {
-		handleConnect(socket);
 		this.id = id;
+		handleConnect(socket);
 	}
 
 	public Connection(InetSocketAddress serverAddress, String id) throws Exception, Exception {
 		this(new Socket(serverAddress.getAddress(), serverAddress.getPort()), id);
 	}
 
-	protected void handleConnect(Socket socket) throws IOException {
+	private void handleConnect(Socket socket) throws IOException {
 		socketControl = socket;
 		socketControlWriter = new PrintWriter(socket.getOutputStream(), true);
 		connectionControlWriter = new ConnectionWriter(socketControlWriter);
@@ -37,7 +38,14 @@ public class Connection {
 		socketControlScanner.useDelimiter("[\\r\\n]+");
 	}
 
+	private void checkStatus() {
+		if (isClosed()) {
+			throw new IllegalStateException(getConnectionLogPrefix() + "connection is closed, id=" + id);
+		}
+	}
+
 	public void replyMsgAndClose(String msg) {
+		checkStatus();
 		if (socketControlWriter != null) {
 			socketControlWriter.println(msg);
 		}
@@ -45,6 +53,9 @@ public class Connection {
 	}
 
 	public void close() {
+		checkStatus();
+		this.isClosed = true;
+		System.out.println(getConnectionLogPrefix() + "close connection, id=" + id);
 		closeSocket(socketControl);
 		socketControl = null;
 		closeSocket(socketData);
@@ -52,14 +63,8 @@ public class Connection {
 		socketControlWriter = null;
 	}
 
-	public static void closeSocket(Socket s) {
-		try {
-			if (s != null) {
-				s.close();
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+	public boolean isClosed() {
+		return this.isClosed;
 	}
 
 	public String getId() {
@@ -67,26 +72,31 @@ public class Connection {
 	}
 
 	public ConnectionWriter getSocketControlWriter() {
+		checkStatus();
 		return this.connectionControlWriter;
 	}
 
 	public Socket getSocketControl() {
+		checkStatus();
 		return this.socketControl;
 	}
 
 	public Scanner getSocketControlScanner() {
+		checkStatus();
 		return this.socketControlScanner;
 	}
 
 	public Socket getSocketData() {
+		checkStatus();
 		return this.socketData;
 	}
 
 	public void setSocketData(Socket socketData) {
+		checkStatus();
 		this.socketData = socketData;
 	}
 
-	public static class ConnectionWriter {
+	public class ConnectionWriter {
 
 		private PrintWriter out;
 
@@ -95,12 +105,26 @@ public class Connection {
 		}
 
 		public void println(String line) {
-			System.out.println("###################: " + line);
+			checkStatus();
+			System.out.println(getConnectionLogPrefix() + line);
 			out.println(line);
 		}
 
 		public void println(Command cmd) {
+			checkStatus();
 			this.println(cmd.toString());
+		}
+	}
+
+	protected abstract String getConnectionLogPrefix();
+
+	public static void closeSocket(Socket s) {
+		try {
+			if (s != null) {
+				s.close();
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
 		}
 	}
 }

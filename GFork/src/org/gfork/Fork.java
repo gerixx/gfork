@@ -244,13 +244,21 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 * Optional, set JVM options to be used for all Fork objects. Default option
 	 * is: -Xmx50m
 	 * 
-	 * @param vmOptions
+	 * @param vmOptionsArg
 	 */
-	public static void setJvmOptionsForAll(final String... vmOptions) {
-		if (vmOptions == null) {
+	public static void setJvmOptionsForAll(final String... vmOptionsArg) {
+		if (vmOptionsArg == null) {
 			Fork.vmOptionsForAll = null;
 		} else {
-			Fork.vmOptionsForAll = new ArrayList<String>(Arrays.asList(vmOptions));
+			Fork.vmOptionsForAll = new ArrayList<String>(Arrays.asList(vmOptionsArg));
+		}
+	}
+
+	public static void setJvmOptionsForAll(List<String> vmOptionsArg) {
+		if (vmOptionsArg == null) {
+			Fork.vmOptionsForAll = null;
+		} else {
+			Fork.vmOptionsForAll = vmOptionsArg;
 		}
 	}
 
@@ -269,16 +277,24 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 * for all forks are kept, see {@link #setJvmOptionsForAll(String[])}.
 	 * Default option is: -Xmx50m
 	 * 
-	 * @param vmOptions
+	 * @param vmOptionsArg
 	 */
-	public void setJvmOptions(final String... vmOptions) {
-		if (vmOptions == null) {
+	public void setJvmOptions(final String... vmOptionsArg) {
+		if (vmOptionsArg == null) {
 			this.vmOptions = null;
 		} else {
-			this.vmOptions = new ArrayList<String>(Arrays.asList(vmOptions));
+			this.vmOptions = new ArrayList<String>(Arrays.asList(vmOptionsArg));
 		}
 	}
 
+	public void setJvmOptions(final List<String> vmOptionsArg) {
+		if (vmOptionsArg == null) {
+			this.vmOptions = null;
+		} else {
+			this.vmOptions = vmOptionsArg;
+		}
+	}
+	
 	public void addJvmOption(final String option) {
 		if (option == null) {
 			throw new IllegalArgumentException("Parameter option must not be null.");
@@ -369,6 +385,8 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 			throw new IllegalStateException(FORK_IS_ALREADY_EXECUTING);
 		}
 		client = ForkClient.connect(host);
+		client.setVmOptionsForAll(new ArrayList<String>(vmOptionsForAll));
+		client.setVmOptions(vmOptions == null ? null : new ArrayList<String>(vmOptions));
 		client.setMethod(method);
 		client.setMethodArgs(methodArgs);
 		client.run(task);
@@ -381,7 +399,7 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 */
 	public boolean isExecuting() {
 		if (client != null) {
-			return true;
+			return !client.isClosed();
 		}
 		if (exec == null) {
 			return false;
@@ -708,6 +726,13 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 * @throws IllegalAccessException
 	 */
 	public void kill() throws IOException, IllegalAccessException, InterruptedException {
+		if (killed) {
+			return;
+		}
+		if (client != null) {
+			client.kill();
+			return;
+		}
 		if (exec == null) {
 			throw new IllegalStateException(FORK_WAS_NOT_STARTED_YET);
 		}
@@ -1038,5 +1063,11 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	protected void finalize() throws Throwable {
 		kill();
 		super.finalize();
+	}
+
+	public void disconnect() {
+		if (client != null && !client.isClosed()) {
+			client.close();
+		}
 	}
 }

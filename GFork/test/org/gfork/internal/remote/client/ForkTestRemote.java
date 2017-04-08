@@ -45,13 +45,14 @@ import org.gfork.tasks.Task02;
 import org.gfork.tasks.When;
 import org.gfork.types.MethodArgumentsException;
 import org.gfork.types.Void;
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
 
 public class ForkTestRemote {
+
+	private static final String TMP_STDOUT_TEST_TXT_FILE = "./tmp/stdoutTest.txt";
 
 	private String result = "?";
 
@@ -62,9 +63,12 @@ public class ForkTestRemote {
 
 	private boolean notifyKill;
 
+	private static Thread forkServerThread;
+
 	@BeforeClass
 	public static void initForAll() throws IOException {
-		File stdout = new File("./tmp/stdoutTest.txt");
+		ForkServer.MAX_FORKS_RUNNING = 3;
+		File stdout = new File(TMP_STDOUT_TEST_TXT_FILE);
 		if (!stdout.exists()) {
 			File tmpDir = new File("./tmp");
 			if (!tmpDir.exists()) {
@@ -72,23 +76,22 @@ public class ForkTestRemote {
 			}
 			stdout.createNewFile();
 		}
-	}
-
-	@Before
-	public void init() {
-		ForkServerTest.startLocalDefaultForkServer();
+		
+		forkServerThread = ForkServerTest.startLocalDefaultForkServer();
 		// configure logging before every test because some of the tests disable it
 		Fork.setLoggingEnabled(true);
 		Fork.setJvmOptionsForAll(new String[] { "-Djava.util.logging.config.file=./logging_forkRunner.properties", });
 	}
 
-	@After
-	public void endTest() throws Exception {
+	@AfterClass
+	public static void finishedAll() throws Exception {
 		ForkServer.stop();
+		forkServerThread.join();
 	}
 
 	@Test
 	public void testDefaultTaskMethod() throws Exception {
+		System.out.println("ForkTest.testDefaultTaskMethod()");
 		Fork<Task01, Void> f = new Fork<Task01, Void>(new Task01());
 
 		f.execute("localhost");
@@ -102,6 +105,8 @@ public class ForkTestRemote {
 		assertEquals("Task01.run()" + Fork.NL, f.getStdOut());
 		assertFalse(f.isError());
 		assertEquals("executed", f.getTask().getState());
+		
+		f.disconnect();
 	}
 
 	@Test
@@ -119,16 +124,17 @@ public class ForkTestRemote {
 		
 		assertEquals(date, f.getReturnValue());
 		assertFalse(f.isError());
+		
+		f.disconnect();
 	}
 
-	@Ignore
 	@Test
 	public void testMethodWithArgsAndReturnValue() throws Exception {
 		System.out.println("ForkTest.testMethodWithArgsAndReturnValue()");
 		Fork<Task02, Date> f = new Fork<Task02, Date>(new Task02(null), Task02.class.getMethod("getDate", When.class),
 				When.TOMORROW);
 
-		f.execute();
+		f.execute("localhost");
 
 		if (f.isError()) {
 			System.out.print(f.getStdErr());
@@ -137,85 +143,92 @@ public class ForkTestRemote {
 		cal.add(Calendar.DAY_OF_MONTH, 1);
 		assertEquals(cal.get(Calendar.DAY_OF_MONTH), getDay(f.getReturnValue()));
 		assertFalse(f.isError());
+		
+		f.disconnect();
 	}
 
-	@Ignore
 	@Test
 	public void testMethodWithPrimitiveArgOverload01() throws Exception {
 		System.out.println("ForkTest.testMethodWithPrimitiveArgOverload01()");
 		Fork<Task02, Date> f = new Fork<Task02, Date>(new Task02(null),
 				Task02.class.getMethod("getValue", Integer.class), 100);
 
-		f.execute();
+		f.execute("localhost");
 
 		assertFalse(f.isError());
 		assertEquals("getValue(Integer) - ok", f.getReturnValue());
+		
+		f.disconnect();
 	}
 
-	@Ignore
 	@Test
+	@Ignore
 	public void testMethodWithPrimitiveArgOverload02() throws Exception {
 		System.out.println("ForkTest.testMethodWithPrimitiveArgOverload02()");
 		Task02 task = new Task02(null);
 		Fork<Task02, Date> f = new Fork<Task02, Date>(task, task.getClass().getMethod("getValue", int.class), 100);
 
-		f.execute();
+		f.execute("localhost");
 
 		assertFalse(f.isError());
 		assertEquals("getValue(int) - ok", f.getReturnValue());
+		
+		f.disconnect();
 	}
 
-	@Ignore
 	@Test
+	@Ignore
 	public void testMethodPrimitiveArgs() throws Exception {
 		System.out.println("ForkTest.testMethodPrimitiveArgs()");
 		Fork<Task01, Boolean> f;
 		Task01 task = new Task01();
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", int.class), 100);
-		f.execute();
+		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", short.class), (short) 100);
-		f.execute();
+		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", long.class), 100);
-		f.execute();
+		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", boolean.class), true);
-		f.execute();
+		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", char.class), 'a');
-		f.execute();
+		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", byte.class), (byte) 255);
-		f.execute();
+		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", double.class), 3.14);
-		f.execute();
+		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", float.class), (float) 3.14);
-		f.execute();
+		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
+		
+		f.disconnect();
 	}
 
-	@Ignore
 	@Test
 	public void testMethodWithNullReturnValue() throws Exception {
 		System.out.println("ForkTest.testMethodWithNullReturnValue()");
 		Fork<Task01, String> f = new Fork<Task01, String>(new Task01(), Task01.class.getMethod("getNullValue"));
 
-		f.execute();
+		f.execute("localhost");
 
 		assertNull(f.getReturnValue());
+		
+		f.disconnect();
 	}
 
-	@Ignore
 	@Test
 	public void testKillFork() throws Exception {
 		System.out.println("ForkTest.testTerminate()");
@@ -230,24 +243,70 @@ public class ForkTestRemote {
 		f2.setStdOutWriter(new PrintWriter(System.out));
 		f3.setStdOutWriter(new PrintWriter(System.out));
 
-		f1.execute();
-		f2.execute();
-		f3.execute();
+		f1.execute("localhost");
+		f2.execute("localhost");
+		f3.execute("localhost");
 
-		Thread.sleep(1500);
+		Thread.sleep(2500);
 
 		f1.kill();
 		f2.kill();
 		f3.kill();
 
-		assertTrue(f1.isError());
-		assertTrue(f2.isError());
-		assertTrue(f3.isError());
-		assertTrue(f1.isFinished());
-		assertTrue(f2.isFinished());
-		assertTrue(f3.isFinished());
+		assertFalse(f1.isExecuting());
+		assertFalse(f2.isExecuting());
+		assertFalse(f3.isExecuting());
+	}
+	
+	@Test
+	public void testVmOptionsForAll() throws Exception {
+		System.out.println("ForkTest.testVmOptions()");
+		
+		Fork.setJvmOptionsForAll(new String[] { "-Dtest.property.all=hello1"});
+		
+		Task01 task1 = new Task01();
+		Fork<Task01, Void> f = new Fork<Task01, Void>(task1);
+		f.setJvmOptions(new String[] { "-Dtest.property.all=hello1"});
+		f.execute("localhost");
+		
+		assertTrue(f.getTask().getCheckVmOptions());
+		f.disconnect();
+		
+		Fork<Task01, Boolean> fm;
+		Task01 task = new Task01();
+		fm = new Fork<Task01, Boolean>(task, task.getClass().getMethod("checkVmOptions"));
+		fm.execute("localhost");
+		
+		assertTrue(fm.getReturnValue());
+		fm.disconnect();
 	}
 
+	@Test
+	public void testVmOptions() throws Exception {
+		System.out.println("ForkTest.testVmOptions()");
+		
+		{
+			Task01 task = new Task01();
+			Fork<Task01, Void> f = new Fork<Task01, Void>(task);
+			f.setJvmOptions(new String[] { "-Dtest.property.all=hello1"});
+			f.execute("localhost");
+
+			assertTrue(f.getTask().getCheckVmOptions());
+			f.disconnect();
+		}
+
+		{
+			Task01 task = new Task01();
+			Fork<Task01, Boolean> f;
+			f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("checkVmOptions"));
+			f.setJvmOptions(new String[] { "-Dtest.property.all=hello1"});
+			f.execute("localhost");
+
+			assertTrue(f.getReturnValue());
+			f.disconnect();
+		}
+	}
+	
 	@Ignore
 	@Test
 	public void testKillForkNotify() throws Exception {
@@ -343,7 +402,7 @@ public class ForkTestRemote {
 		System.out.println("ForkTest.testStdOutFile()");
 		Fork<Task02, Void> f = new Fork<Task02, Void>(new Task02(), Task02.class.getMethod("printToStdOut"));
 
-		File stdout = new File("./tmp/stdoutTest.txt");
+		File stdout = new File(TMP_STDOUT_TEST_TXT_FILE);
 		stdout.delete();
 		f.setStdOutWriter(new PrintWriter(stdout));
 
@@ -591,7 +650,7 @@ public class ForkTestRemote {
 
 		f.execute();
 
-		File stdout = new File("./tmp/stdoutTest.txt");
+		File stdout = new File(TMP_STDOUT_TEST_TXT_FILE);
 		f.setStdOutWriter(new PrintWriter(stdout));
 	}
 
