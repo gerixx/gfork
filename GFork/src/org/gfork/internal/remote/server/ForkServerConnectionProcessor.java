@@ -69,6 +69,9 @@ public class ForkServerConnectionProcessor extends Thread {
 				case getExitValue:
 					getExitValue();
 					break;
+				case isFinished:
+					isFinished();
+					break;
 				case connectClose:
 					connectClose();
 					break;
@@ -78,8 +81,7 @@ public class ForkServerConnectionProcessor extends Thread {
 					throw new RuntimeException("Unexpected command: " + nextCommand);
 				}
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				LOG.log(Level.SEVERE, e.getMessage(), e);
 			} finally {
 				connections.remove(con.getId());
 			}
@@ -101,8 +103,7 @@ public class ForkServerConnectionProcessor extends Thread {
 			fork.execute();
 			this.con.getSocketControlWriter().println(Command.runOk);
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			LOG.log(Level.SEVERE, e.getMessage(), e);
 		}
 	}
 
@@ -112,8 +113,7 @@ public class ForkServerConnectionProcessor extends Thread {
 			fork.kill();
 			this.con.getSocketControlWriter().println(Command.killOk);
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			LOG.log(Level.SEVERE, e.getMessage(), e);
 		}
 	}
 
@@ -137,8 +137,7 @@ public class ForkServerConnectionProcessor extends Thread {
 			fork.execute();
 			this.con.getSocketControlWriter().println(Command.runOk);
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			LOG.log(Level.SEVERE, e.getMessage(), e);
 		}
 	}
 
@@ -180,16 +179,14 @@ public class ForkServerConnectionProcessor extends Thread {
 			try {
 				fork.kill();
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
+				LOG.log(Level.SEVERE, e.getMessage(), e);
 			}
 		}
 		this.con.getSocketControlWriter().println(Command.connectCloseOk);
 		try {
 			con.close();
 		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
+			LOG.log(Level.SEVERE, e.getMessage(), e);
 		}
 	}
 
@@ -221,6 +218,14 @@ public class ForkServerConnectionProcessor extends Thread {
 	private void getExitValue() {
 		try {
 			ForkClient.writeObject(fork.getExitValue(), con.getSocketData().getOutputStream());
+		} catch (Exception e) {
+			LOG.log(Level.SEVERE, getLogContext(), e);
+		}
+	}
+
+	private void isFinished() {
+		try {
+			ForkClient.writeObject(fork.isFinished(), con.getSocketData().getOutputStream());
 		} catch (Exception e) {
 			LOG.log(Level.SEVERE, getLogContext(), e);
 		}

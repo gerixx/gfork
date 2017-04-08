@@ -66,6 +66,10 @@ public class Task02 implements Serializable {
 		return "getValue(Integer) - ok";
 	}
 	
+	public String delay(Integer millis) throws InterruptedException {
+		return delay(millis.intValue());
+	}
+	
 	public String delay(int millis) throws InterruptedException {
 		long begin = System.currentTimeMillis();
 		Thread.sleep(millis);

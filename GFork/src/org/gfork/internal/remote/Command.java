@@ -10,5 +10,6 @@ public enum Command {
 	getStdOut, 
 	getExitValue, 
 	kill, killOk,
-	connectClose, connectCloseOk
+	connectClose, connectCloseOk, 
+	isFinished
 }

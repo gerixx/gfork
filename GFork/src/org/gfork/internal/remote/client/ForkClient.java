@@ -236,6 +236,15 @@ public class ForkClient {
 		}
 	}
 
+	public boolean isFinished() {
+		try {
+			con.getSocketControlWriter().println(Command.isFinished);
+			return (boolean)readObject(con.getSocketData().getInputStream());
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
 	public void setMethod(Method method) {
 		this.method = method;
 	}

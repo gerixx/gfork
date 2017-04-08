@@ -384,6 +384,17 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 		if (isExecuting()) {
 			throw new IllegalStateException(FORK_IS_ALREADY_EXECUTING);
 		}
+		if (method != null) {
+			Class<?>[] parameterTypes = method.getParameterTypes();
+			for (int i = 0; i < parameterTypes.length; i++) {
+				Object argType = parameterTypes[i];
+				if (argType == int.class || argType == float.class || argType == short.class
+						|| argType == char.class || argType == byte.class 
+						|| argType == double.class || argType == long.class) {
+					throw new IllegalArgumentException("Basic data types not supported for remote fork.");
+				}
+			}
+		}
 		client = ForkClient.connect(host);
 		client.setVmOptionsForAll(new ArrayList<String>(vmOptionsForAll));
 		client.setVmOptions(vmOptions == null ? null : new ArrayList<String>(vmOptions));
@@ -460,6 +471,9 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 	 *         completed
 	 */
 	public final boolean isFinished() {
+		if (client != null) {
+			return client.isFinished();
+		}
 		return finished;
 	}
 

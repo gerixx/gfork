@@ -45,6 +45,7 @@ import org.gfork.tasks.Task02;
 import org.gfork.tasks.When;
 import org.gfork.types.MethodArgumentsException;
 import org.gfork.types.Void;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
@@ -62,6 +63,8 @@ public class ForkTestRemote {
 	private boolean onFinished;
 
 	private boolean notifyKill;
+
+	private Fork fork;
 
 	private static Thread forkServerThread;
 
@@ -87,6 +90,14 @@ public class ForkTestRemote {
 	public static void finishedAll() throws Exception {
 		ForkServer.stop();
 		forkServerThread.join();
+	}
+	
+	@After
+	public void endTest() {
+		if (fork != null) {
+			fork.disconnect();
+			fork = null;
+		}
 	}
 
 	@Test
@@ -175,9 +186,16 @@ public class ForkTestRemote {
 		
 		f.disconnect();
 	}
+	
+	@Test(expected = IllegalArgumentException.class)
+	public void negativePrimitiveArgsNotSupportedYet() throws Exception {
+		Task01 task = new Task01();
+		fork = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", int.class), 100);
+		fork.execute("localhost");
+	}
 
 	@Test
-	@Ignore
+	@Ignore // TODO implement primitive parameter type support
 	public void testMethodPrimitiveArgs() throws Exception {
 		System.out.println("ForkTest.testMethodPrimitiveArgs()");
 		Fork<Task01, Boolean> f;
@@ -353,7 +371,6 @@ public class ForkTestRemote {
 		assertEquals("test exception", f.getException().getMessage());
 	}
 
-	@Ignore
 	@Test
 	public void testJvmOptions() throws Exception {
 		System.out.println("ForkTest.testJvmOptions()");
@@ -361,12 +378,13 @@ public class ForkTestRemote {
 		Fork.setJvmOptionsForAll(new String[] { "-Xmx50m", "-Dlibrary.path=" + libdrive, });
 		Fork<Task01, Boolean> f = new Fork<Task01, Boolean>(new Task01(),
 				Task01.class.getMethod("checkLibPath", String.class), libdrive);
-		f.execute();
+		f.execute("localhost");
 		assertTrue(f.getReturnValue());
 		assertTrue(f.getReturnValue()); // try multiple calls
+		
+		f.disconnect();
 	}
 
-	@Ignore
 	@Test
 	public void testSystemProperties() throws Exception {
 		System.out.println("ForkTest.testSystemProperties()");
@@ -390,10 +408,12 @@ public class ForkTestRemote {
 
 		f.setJvmOptions("-DcustomSysProperty2=4testonly");
 
-		f.execute();
+		f.execute("localhost");
 
 		assertFalse(f.isError());
 		assertTrue(f.getReturnValue());
+		
+		f.disconnect();
 	}
 
 	@Ignore
@@ -556,27 +576,28 @@ public class ForkTestRemote {
 		assertTrue(onFinished);
 	}
 
-	@Ignore
 	@Test
 	public void testTaskFinishedPolling() throws Exception {
-		int delay = 2000;
-		Fork<Task02, String> f = new Fork<Task02, String>(new Task02(), Task02.class.getMethod("delay", int.class),
-				delay);
+		int delayInMillis = 5000;
+		Fork<Task02, String> f = new Fork<Task02, String>(new Task02(), Task02.class.getMethod("delay", Integer.class),
+				delayInMillis);
 
-		f.execute();
+		f.execute("localhost");
 
 		// polling
-		int pollingTime = delay / 10;
+		int pollingTime = delayInMillis / 5;
+		long start = System.currentTimeMillis();
 		boolean finished = false;
-		int cnt = 1;
+		int cnt = 0;
 		while (!finished && cnt < 20) {
 			Thread.sleep(pollingTime);
 			finished = f.isFinished();
 			cnt++;
 		}
 
-		assertTrue(cnt >= delay / pollingTime - 1);
+		assertTrue("cnt=" + cnt, cnt > 4);
 		assertTrue(finished);
+		assertTrue(System.currentTimeMillis() - start > delayInMillis);
 	}
 
 	@Ignore
@@ -590,55 +611,51 @@ public class ForkTestRemote {
 		f.waitFor();
 	}
 
-	@Ignore
 	@Test(expected = MethodArgumentsException.class)
 	public void negativeMethodButInvalidArgs() throws Exception {
 		System.out.println("ForkTest.negativeMethodButInvalidArgs()");
-		Fork<Task02, Date> f = new Fork<Task02, Date>(new Task02(null), Task02.class.getMethod("getDate"),
+		fork = new Fork<Task02, Date>(new Task02(null), Task02.class.getMethod("getDate"),
 				When.TOMORROW);
-		f.execute();
+		fork.execute("localhost");
 	}
 
 	@Ignore
 	@Test(expected = IllegalAccessException.class)
 	public void negativeMethodWithReturnTypeVoid() throws Exception {
 		System.out.println("ForkTest.negativeMethodWithReturnTypeVoid()");
-		Fork<Task01, Void> f = new Fork<Task01, Void>(new Task01(), Task01.class.getMethod("voidMethod"));
+		fork = new Fork<Task01, Void>(new Task01(), Task01.class.getMethod("voidMethod"));
 
-		f.execute();
+		fork.execute("localhost");
 
-		f.getReturnValue();
+		fork.getReturnValue();
 	}
 
-	@Ignore
 	@Test(expected = NoSuchMethodException.class)
 	public void negativeUnknownMethod() throws Exception {
 		System.out.println("ForkTest.negativeUnknownMethod()");
-		Fork<Task02, Void> f = new Fork<Task02, Void>(new Task02(null), Task02.class.getMethod("methodNotExists"));
+		fork = new Fork<Task02, Void>(new Task02(null), Task02.class.getMethod("methodNotExists"));
 
-		f.execute();
+		fork.execute("localhost");
 	}
 
-	@Ignore
 	@Test(expected = NoSuchMethodException.class)
 	public void negativeInvalidMethodArgs() throws Exception {
 		System.out.println("ForkTest.negativeInvalidMethodArgs()");
-		Fork<Task02, Date> f = new Fork<Task02, Date>(new Task02(null), Task02.class.getMethod("getDate", String.class),
+		fork = new Fork<Task02, Date>(new Task02(null), Task02.class.getMethod("getDate", String.class),
 				"invalid param");
 
-		f.execute();
+		fork.execute("localhost");
 	}
 
-	@Ignore
 	@Test(expected = ClassCastException.class)
 	public void negativeReturnTypeMismatch() throws Exception {
 		System.out.println("ForkTest.negativeReturnTypeMismatch()");
-		Fork<Task02, String> f = new Fork<Task02, String>(new Task02(null),
+		fork = new Fork<Task02, String>(new Task02(null),
 				Task02.class.getMethod("getDate", When.class), When.TOMORROW);
 
-		f.execute();
+		fork.execute("localhost");
 
-		String value = f.getReturnValue();
+		String value = (String) fork.getReturnValue();
 		System.out.println(value);
 	}
 
@@ -646,12 +663,12 @@ public class ForkTestRemote {
 	@Test(expected = IllegalStateException.class)
 	public void negativeStdOutFile() throws Exception {
 		System.out.println("ForkTest.negativeStdOutFile()");
-		Fork<Task02, Void> f = new Fork<Task02, Void>(new Task02(), Task02.class.getMethod("printToStdOut"));
+		fork = new Fork<Task02, Void>(new Task02(), Task02.class.getMethod("printToStdOut"));
 
-		f.execute();
+		fork.execute();
 
 		File stdout = new File(TMP_STDOUT_TEST_TXT_FILE);
-		f.setStdOutWriter(new PrintWriter(stdout));
+		fork.setStdOutWriter(new PrintWriter(stdout));
 	}
 
 	private String getTempFolder() {
