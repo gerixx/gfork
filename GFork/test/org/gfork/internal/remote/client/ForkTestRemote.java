@@ -187,15 +187,7 @@ public class ForkTestRemote {
 		f.disconnect();
 	}
 	
-	@Test(expected = IllegalArgumentException.class)
-	public void negativePrimitiveArgsNotSupportedYet() throws Exception {
-		Task01 task = new Task01();
-		fork = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", int.class), 100);
-		fork.execute("localhost");
-	}
-
 	@Test
-	@Ignore // TODO implement primitive parameter type support
 	public void testMethodPrimitiveArgs() throws Exception {
 		System.out.println("ForkTest.testMethodPrimitiveArgs()");
 		Fork<Task01, Boolean> f;
@@ -207,31 +199,36 @@ public class ForkTestRemote {
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", short.class), (short) 100);
 		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
+		f.disconnect();
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", long.class), 100);
 		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
+		f.disconnect();
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", boolean.class), true);
 		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
+		f.disconnect();
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", char.class), 'a');
 		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
+		f.disconnect();
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", byte.class), (byte) 255);
 		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
+		f.disconnect();
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", double.class), 3.14);
 		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
+		f.disconnect();
 
 		f = new Fork<Task01, Boolean>(task, task.getClass().getMethod("set", float.class), (float) 3.14);
 		f.execute("localhost");
 		assertTestPrimitiveArgs(f);
-		
 		f.disconnect();
 	}
 

@@ -4,7 +4,6 @@ import java.io.InputStream;
 import java.io.Serializable;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Level;
@@ -92,7 +91,7 @@ public class ForkServerConnectionProcessor extends Thread {
 	private void runFork() {
 		try {
 			LOG.info("Run Fork");
-			Serializable task = ForkClient.readObject(con.getSocketData().getInputStream());
+			Serializable task = (Serializable) ForkClient.readObject(con.getSocketData().getInputStream());
 			Fork.setJvmOptionsForAll((List)ForkClient.readObject(con.getSocketData().getInputStream()));
 			List<String> vmOptions = (List)ForkClient.readObject(con.getSocketData().getInputStream());
 			className = task.getClass().getName();
@@ -122,31 +121,22 @@ public class ForkServerConnectionProcessor extends Thread {
 		try {
 			LOG.info("Run Method Fork");
 			InputStream inputStream = con.getSocketData().getInputStream();
-			Serializable task = ForkClient.readObject(inputStream);
+			Serializable task = (Serializable) ForkClient.readObject(inputStream);
 			Fork.setJvmOptionsForAll((List)ForkClient.readObject(inputStream));
 			List<String> vmOptions = (List)ForkClient.readObject(con.getSocketData().getInputStream());
 			String methodName = (String) ForkClient.readObject(inputStream);
-			Serializable[] methodArgs = (Serializable[]) ForkClient.readObject(inputStream);
-			className = task.getClass().getName();
-			Class<?>[] parameterTypes = getMethodParameterTypes(methodArgs);
-			Method method = task.getClass().getMethod(methodName, parameterTypes);
+			Class<?>[] methodArgTypes = (Class<?>[]) ForkClient.readObject(inputStream);
+			Serializable[] methodArgValues = (Serializable[]) ForkClient.readObject(inputStream);
+			Method method = task.getClass().getMethod(methodName, methodArgTypes);
 			LOG.info(getLogContext() + " - run '" + className + "." + method.getName() + "'");
 			Constructor<Fork> constructor = Fork.class.getConstructor(Serializable.class, Method.class, Serializable[].class);
-			fork = constructor.newInstance(task, method, methodArgs);
+			fork = constructor.newInstance(task, method, methodArgValues);
 			fork.setJvmOptions(vmOptions);
 			fork.execute();
 			this.con.getSocketControlWriter().println(Command.runOk);
 		} catch (Exception e) {
 			LOG.log(Level.SEVERE, e.getMessage(), e);
 		}
-	}
-
-	private Class<?>[] getMethodParameterTypes(Serializable[] methodArgs) {
-		List<Class<?>> typeList = new ArrayList<>();
-		for (Serializable serializable : methodArgs) {
-			typeList.add(serializable.getClass());
-		}
-		return typeList.toArray(new Class<?>[typeList.size()]);
 	}
 
 	private Command readNextCommand() {

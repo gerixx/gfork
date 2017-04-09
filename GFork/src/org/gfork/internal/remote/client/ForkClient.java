@@ -96,6 +96,7 @@ public class ForkClient {
 			writeObject(vmOptionsForAll, con.getSocketData().getOutputStream());
 			writeObject(vmOptions, con.getSocketData().getOutputStream());
 			writeObject(method.getName(), con.getSocketData().getOutputStream());
+			writeObject(method.getParameterTypes(), con.getSocketData().getOutputStream());
 			writeObject(methodArgs, con.getSocketData().getOutputStream());
 		}
 		checkReply(Command.runOk, "Remote run of class '" + className + "' failed.");
@@ -195,9 +196,9 @@ public class ForkClient {
 		objOut.flush();
 	}
 
-	public static Serializable readObject(InputStream inputStream) throws Exception {
+	public static Object readObject(InputStream inputStream) throws Exception {
 		ObjectInputStream objIn = new ObjectInputStream(inputStream);
-		return (Serializable) objIn.readObject();
+		return objIn.readObject();
 	}
 
 	public String getStdErr() {
@@ -230,7 +231,7 @@ public class ForkClient {
 	public Serializable getReturnValue() {
 		try {
 			con.getSocketControlWriter().println(Command.getMethodReturnValue);
-			return readObject(con.getSocketData().getInputStream());
+			return (Serializable) readObject(con.getSocketData().getInputStream());
 		} catch (Exception e) {
 			throw new RuntimeException(e);
 		}
