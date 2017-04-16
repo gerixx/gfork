@@ -57,6 +57,10 @@ public class ForkLink<TASK_TYPE extends Linkable, RETURN_TYPE extends Serializab
 		super(task, method, args);
 	}
 	
+	@Override
+	public synchronized void execute(String host) throws Exception {
+		throw new IllegalAccessException("Remote support only implemented for basic Fork class. You're welcome if you would fix that ;-)");
+	}
 	
 	/**
 	 * For internal use only: defines the port of the successor task to where this Fork 
@@ -77,7 +81,7 @@ public class ForkLink<TASK_TYPE extends Linkable, RETURN_TYPE extends Serializab
 	 * @throws IllegalAccessException
 	 * @throws InterruptedException
 	 */
-	public int readForkListenerPort() throws NumberFormatException, IOException, IllegalAccessException, InterruptedException {
+	protected int readForkListenerPort() throws NumberFormatException, IOException, IllegalAccessException, InterruptedException {
 		int cnt = 0;
 		while (getStatusInfo() == null) {
 			Thread.sleep(200);

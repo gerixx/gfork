@@ -6,6 +6,7 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -79,8 +80,12 @@ public class ForkServerConnectionProcessor extends Thread {
 				default:
 					throw new RuntimeException("Unexpected command: " + nextCommand);
 				}
+			} catch (NoSuchElementException e) {
+				LOG.log(Level.FINE, e.getMessage(), e);
+				return; // client connection closed
 			} catch (Exception e) {
 				LOG.log(Level.SEVERE, e.getMessage(), e);
+				return;
 			} finally {
 				connections.remove(con.getId());
 			}

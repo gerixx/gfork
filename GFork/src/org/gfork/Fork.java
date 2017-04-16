@@ -43,6 +43,7 @@ import org.gfork.helpers.ForkListenerAdapter;
 import org.gfork.internal.SysPropTask;
 import org.gfork.internal.remote.client.ForkClient;
 import org.gfork.internal.run.ForkRunner;
+import org.gfork.remote.server.ForkServer;
 import org.gfork.types.MethodArgumentsException;
 
 /**
@@ -380,6 +381,11 @@ public class Fork<TASK_TYPE extends Serializable, RETURN_TYPE extends Serializab
 		readStdOut();
 	}
 
+	/**
+	 * Executes a remote fork task. Connects to host[:port] of a remote running {@link ForkServer}.
+	 * @param host {@link ForkServer} host, use "host:port" if not using default server listening port.
+	 * @throws Exception
+	 */
 	public synchronized void execute(String host) throws Exception {
 		if (isExecuting()) {
 			throw new IllegalStateException(FORK_IS_ALREADY_EXECUTING);

@@ -19,6 +19,14 @@
 
 -->
 
+<!--
+
+	This script only deploys build output from the Eclipse project.
+	
+    TODO: extend this to compile all.
+
+-->
+
 <project default="deploy">
 	<target name="deploy" description="creates deployment bundles, build and javadoc must be finished">
 		<jar destfile="./deploy/gfork.jar" basedir="./bin" />
@@ -41,7 +49,7 @@
 		<jar destfile="./deploy/gfork-javadoc.jar" basedir="./doc" update="true" 
 			 includes="COPYING.LESSER.txt COPYING.txt LICENSE.txt README.txt"/>
 
-		<zip destfile="./gfork-0.12.zip">
+		<zip destfile="./gfork-0.2.zip">
 			<fileset dir="./deploy"/>
 			<fileset dir="." includes="COPYING.LESSER.txt COPYING.txt LICENSE.txt README.txt logging_forkRunner.properties"/>
 		</zip>

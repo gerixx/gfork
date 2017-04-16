@@ -64,6 +64,7 @@ public class ForkTestRemote {
 
 	private boolean notifyKill;
 
+	@SuppressWarnings("rawtypes")
 	private Fork fork;
 
 	private static Thread forkServerThread;
@@ -173,7 +174,6 @@ public class ForkTestRemote {
 	}
 
 	@Test
-	@Ignore
 	public void testMethodWithPrimitiveArgOverload02() throws Exception {
 		System.out.println("ForkTest.testMethodWithPrimitiveArgOverload02()");
 		Task02 task = new Task02(null);
@@ -406,6 +406,7 @@ public class ForkTestRemote {
 		f.setJvmOptions("-DcustomSysProperty2=4testonly");
 
 		f.execute("localhost");
+		f.waitFor();
 
 		assertFalse(f.isError());
 		assertTrue(f.getReturnValue());

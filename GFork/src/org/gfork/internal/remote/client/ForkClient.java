@@ -13,10 +13,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.gfork.internal.remote.Command;
+import org.gfork.internal.remote.Connection;
 import org.gfork.internal.remote.ReplyData;
 import org.gfork.remote.TimeoutException;
 import org.gfork.remote.server.ForkServer;
@@ -27,7 +32,7 @@ import org.gfork.remote.server.ForkServer;
  * Server implements class loader Server loads class on demand from Client
  * Server caches classes
  * 
- * @author geri
+ * @author Gerald Ehmayer
  *
  */
 public class ForkClient {
@@ -118,7 +123,7 @@ public class ForkClient {
 				con.getSocketControlWriter().println(Command.waitFor);
 				checkReply(Command.waitForFinished, "Remote waitFor failed.");
 			} catch (Exception e) {
-				String serverError = ForkServer.readReplyControl(con);
+				String serverError = ForkClient.readReplyControl(con);
 				LOG.log(Level.SEVERE, "Error waitFor class '" + className + "', server error: " + serverError, e);
 				throw new RuntimeException(e);
 			}
@@ -143,7 +148,7 @@ public class ForkClient {
 	}
 
 	private String readPropertyFromContorl(String name) {
-		String nameValuePair = ForkServer.readReplyControl(con);
+		String nameValuePair = ForkClient.readReplyControl(con);
 		String[] nameValueArray = nameValuePair.split("=");
 		assert nameValueArray.length == 2;
 		assert nameValueArray[0].equals(name);
@@ -175,7 +180,7 @@ public class ForkClient {
 	}
 
 	private void checkReply(String token, String msg) throws Exception {
-		ReplyData runReply = ForkServer.readReplyControl(token, con);
+		ReplyData runReply = ForkClient.readReplyControl(token, con);
 		if (runReply.isTimedOut()) {
 			throw new TimeoutException("Timeout: " + msg + " Expected reply '" + token + "'");
 		}
@@ -264,5 +269,62 @@ public class ForkClient {
 
 	public boolean isClosed() {
 		return con.isClosed();
+	}
+
+	public static String readReplyControl(Connection con) {
+		try {
+			FutureTask<String> readNextLine = new FutureTask<String>(() -> {
+				return con.getSocketControlScanner().nextLine();
+			});
+			ExecutorService executor = Executors.newFixedThreadPool(1);
+			executor.execute(readNextLine);
+			return readNextLine.get(ForkServer.SOCKET_READ_TIMEOU_IN_MILLIS, TimeUnit.MILLISECONDS);
+		} catch (Exception e) {
+			ForkServer.LOG.log(Level.FINE, "control scanner read error", e);
+			return null;
+		}
+	}
+
+	public static ReplyData readReplyControl(String token, Connection con, int timeoutMs) throws Exception {
+		try {
+			FutureTask<String> readNextLine = new FutureTask<String>(() -> {
+				return con.getSocketControlScanner().nextLine();
+			});
+			ExecutorService executor = Executors.newFixedThreadPool(1);
+			executor.execute(readNextLine);
+			String replyToken = (timeoutMs > 0 ? readNextLine.get(timeoutMs, TimeUnit.MILLISECONDS)
+					: readNextLine.get());
+			return new ReplyData(token.equals(replyToken), false, replyToken);
+		} catch (TimeoutException e) {
+			ForkServer.LOG.warning(() -> "reading from control scanner timed out");
+			return new ReplyData(false, true, null);
+		}
+	}
+
+	public static ReplyData readReplyControl(String token, Connection con) throws Exception {
+		return ForkClient.readReplyControl(token, con, ForkServer.SOCKET_READ_TIMEOU_IN_MILLIS);
+	}
+
+	public static ReplyData readReply(String token, InputStream inputStream) throws Exception {
+		int toread = token.getBytes().length;
+		byte[] buff = new byte[toread];
+		int len = 0, red = 0;
+		long endTime = ForkServer.SOCKET_READ_TIMEOU_IN_MILLIS + System.currentTimeMillis();
+		boolean isTimedOut = false;
+		do {
+			if (inputStream.available() == 0) {
+				Thread.sleep(300);
+			} else {
+				len = inputStream.read(buff, red, toread - red);
+				red += len;
+			}
+		} while (red < toread && !(isTimedOut = endTime < System.currentTimeMillis()));
+		if (isTimedOut) {
+			ForkServer.LOG.warning(() -> "reading from input stream timed out");
+			return new ReplyData(false, true, (red > 0 ? new String(buff, 0, red) : ""));
+		} else {
+			String replyToken = new String(buff);
+			return new ReplyData(token.equals(replyToken), false, replyToken);
+		}
 	}
 }

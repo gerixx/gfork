@@ -24,18 +24,19 @@
 		<javadoc access="protected" 
 			author="true" 
 			classpath=""
-			destdir="doc" doctitle="GFork - to run tasks in a process" 
+			destdir="doc" 
+			doctitle="GFork - to run tasks in a process" 
 			nodeprecated="false" nodeprecatedlist="false" 
 			noindex="false" 
 			nonavbar="false" notree="false" 
 			packagenames="org.gfork.sample.swing,org.gfork.types,org.gfork.helpers,org.gfork.internal.run,org.gfork.internal.types" 
-			source="1.6" 
-			sourcefiles="src/org/gfork/CallableTask.java,src/org/gfork/swing/JFrameTask.java,src/org/gfork/Linkable.java,src/org/gfork/swing/JFrameFork.java,src/org/gfork/FutureTaskFork.java,src/org/gfork/ForkChain.java,src/org/gfork/ForkCallable.java,src/org/gfork/ForkLink.java,src/org/gfork/Fork.java" 
+			source="1.8" 
+			sourcefiles="src/org/gfork/CallableTask.java,src/org/gfork/swing/JFrameTask.java,src/org/gfork/Linkable.java,src/org/gfork/swing/JFrameFork.java,src/org/gfork/FutureTaskFork.java,src/org/gfork/ForkChain.java,src/org/gfork/ForkCallable.java,src/org/gfork/ForkLink.java,src/org/gfork/Fork.java,src/org/gfork/remote/server/ForkServer.java" 
 			sourcepath="samples;src" 
 			splitindex="true" 
 			use="true" 
 			version="true">
-			<link href="http://java.sun.com/javase/6/docs/api/"/>
+			<link href="https://docs.oracle.com/javase/8/docs/api/"/>
 		</javadoc>
 	</target>
 </project>

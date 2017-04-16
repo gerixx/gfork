@@ -4,7 +4,7 @@ License:
   
 Installation and Usage:
   - add gfork.jar to the classpath, there are no dependencies to 3rd party libraries
-  - Java version: JRE 1.5 or newer
+  - Java version: JRE 1.8 or newer
   - Java permissions - followings are usually enabled for JRE standard installations:
       + Object Serialization
       + Reflection 
