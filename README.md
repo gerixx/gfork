@@ -1,7 +1,10 @@
 # Introduction
 
-Tasks can be implemented in any public method of a `Serializable` class. Per default a method `public void run()`
+Use gfork library to conveniently spawn tasks in an external local or remote process. 
+Tasks can be implemented in any public method of a `Serializable` class. 
+Per default a method `public void run()`
 is used to execute a task, therefore it has to implement interface `java.lang.Runnable`.
+Java 8 is required.
 
 Example:
 
@@ -24,6 +27,28 @@ class MyTask implements Serializable, Runnable {
 
 The fork process ends when the `MyTask` method `run` finishes.
 
+## Remote Task Execution
+
+Deploy gfork and your application libs to a host where tasks should be executed. 
+Start a fork server for example at "myhost" to execute a task remotely from your local application:
+
+```
+$/> java -cp <application classpath + gfork.jar> org.gfork.remote.server.ForkServer
+```
+
+Use `execute("myhost")` of class `Fork` in your local running application:
+
+```
+Fork<MyTask, Void> f = new Fork<MyTask, Void>(new MyTask());
+	
+f.execute("myhost");
+	
+f.waitFor();
+	
+...
+
+```
+
 ## Description
 
 Term _fork_ is borrowed from fork processes on Unix systems. In Java 6 are Unix like forks not possible. The upcoming release of Java 7 (end of year 2010) will support a Fork/Join mechanism, which seems to come very close to real forks, but also with some restrictions, see below Java 7 Fork/Join Extension. The intention of this package is to provide something similar by using Java sub processes. The created process that executes a task in a Java `Fork` inherits the environment of the parent VM process per default, including class path and system properties. The API gives as much as possible freedom in implementing the task that should be executed in the subprocess, furthermore the final state of the task object is propagated back to the parent process. 
@@ -35,6 +60,10 @@ Requirements for task execution:
  * Permission to use Java Reflection.
  * Permission to create, read and write temporary files.
  * Permission to establish socket connections and listeners.
+ 
+Limitation:
+
+ * A task has no access to the origin application state.
 
 Object Serialization is needed to pass a task object to the internal `ForkRunner`
 that implements the main method to launch a fork. `ForkRunner` invokes the chosen task method via Java Reflection. Vice versa the task object, 
