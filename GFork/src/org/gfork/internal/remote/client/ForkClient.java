@@ -45,6 +45,8 @@ public class ForkClient {
 
 	private static Map<String, ForkClient> forks = new HashMap<>();
 
+	private static ExecutorService executor = Executors.newCachedThreadPool();
+
 	private ConnectionClientSide con;
 
 	private String className;
@@ -276,7 +278,6 @@ public class ForkClient {
 			FutureTask<String> readNextLine = new FutureTask<String>(() -> {
 				return con.getSocketControlScanner().nextLine();
 			});
-			ExecutorService executor = Executors.newFixedThreadPool(1);
 			executor.execute(readNextLine);
 			return readNextLine.get(ForkServer.SOCKET_READ_TIMEOU_IN_MILLIS, TimeUnit.MILLISECONDS);
 		} catch (Exception e) {
@@ -285,15 +286,13 @@ public class ForkClient {
 		}
 	}
 
-	public static ReplyData readReplyControl(String token, Connection con, int timeoutMs) throws Exception {
+	private static ReplyData readReplyControl(String token, Connection con, int timeoutMs) throws Exception {
 		try {
 			FutureTask<String> readNextLine = new FutureTask<String>(() -> {
 				return con.getSocketControlScanner().nextLine();
 			});
-			ExecutorService executor = Executors.newFixedThreadPool(1);
 			executor.execute(readNextLine);
-			String replyToken = (timeoutMs > 0 ? readNextLine.get(timeoutMs, TimeUnit.MILLISECONDS)
-					: readNextLine.get());
+			String replyToken = readNextLine.get(timeoutMs, TimeUnit.MILLISECONDS);
 			return new ReplyData(token.equals(replyToken), false, replyToken);
 		} catch (TimeoutException e) {
 			ForkServer.LOG.warning(() -> "reading from control scanner timed out");

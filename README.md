@@ -107,7 +107,8 @@ class MyTaks implements Serializable {
 }
 ```
 
-For more capabilities, e.g., callable tasks and usage scenarios inspect javadoc (see gforc-javadoc.jar) and the JUnit tests (see gfork-tests.jar). A sample application shows how a Swing `JFrame` can be run in a fork, therefore see  `org.gfork.swing` in gfork.jar.
+For more capabilities, e.g., callable tasks and usage scenarios inspect javadoc (see gfork-javadoc.jar) and the JUnit tests (see gfork-tests.jar). 
+A sample application shows how a Swing `JFrame` can be run in a fork, therefore see  `org.gfork.swing` in gfork.jar.
 
 ## Java 7 Fork/Join Extension (JSR 166) 
 
